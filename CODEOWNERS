@@ -1,0 +1,4 @@
+# Todas as implementações / alterações no domínio de conta de usuário deve ser feito APENAS pelo victor barberino.
+/src/main/java/br/com/blackhunter/hunter_wallet/rest_api/useraccount @mistervb
+/src/main/java/br/com/blackhunter/hunter_wallet/rest_api/core @mistervb
+/src/main/java/br/com/blackhunter/hunter_wallet/rest_api/config @mistervb
