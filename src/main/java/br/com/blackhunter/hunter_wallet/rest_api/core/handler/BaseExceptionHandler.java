@@ -1,8 +1,8 @@
 /**
  * 2025 © Black Hunter - Todos os Direitos Reservados.
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Classe protegida - Alterações somente por CODEOWNERS.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.core.handler;
 
