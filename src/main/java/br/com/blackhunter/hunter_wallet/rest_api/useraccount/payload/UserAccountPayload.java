@@ -1,8 +1,11 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountPayload.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload;
 
@@ -30,4 +33,6 @@ public class UserAccountPayload {
     private String email;
     @NotBlank(message = "The \"password\" field is mandatory.")
     private String hashedPassword;
+    @NotBlank(message = "The \"username\" field is mandatory.")
+    private String username;
 }

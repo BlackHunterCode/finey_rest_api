@@ -1,12 +1,16 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountRepositoryTest.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository;
 
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +47,9 @@ public class UserAccountRepositoryTest {
         // Não definimos o ID manualmente, pois ele é gerado automaticamente
         entity.setAccountName("Usuário Teste");
         entity.setEmail("usuario.existente@example.com");
-        entity.setHashedPassword("senhaHasheada123");
+        entity.setPasswordHash("senhaHasheada123");
         entity.setAccountUsername("usuario.teste");
-        entity.setAccountIsActive(true);
+        entity.setAccountStatus(UserAccountStatus.ACTIVE);
         entity.setCreatedAt(LocalDateTime.now());
 
         // Persistindo a entidade
@@ -85,9 +89,9 @@ public class UserAccountRepositoryTest {
         // Não definimos o ID manualmente, pois ele é gerado automaticamente
         entity.setAccountName("Usuário Teste");
         entity.setEmail("usuario.case@example.com");
-        entity.setHashedPassword("senhaHasheada123");
+        entity.setPasswordHash("senhaHasheada123");
         entity.setAccountUsername("usuario.teste");
-        entity.setAccountIsActive(true);
+        entity.setAccountStatus(UserAccountStatus.ACTIVE);
         entity.setCreatedAt(LocalDateTime.now());
 
         // Persistindo a entidade

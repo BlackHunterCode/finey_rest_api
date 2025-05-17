@@ -1,18 +1,21 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountMapperTest.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.mapper;
 
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload.UserAccountPayload;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mapstruct.factory.Mappers;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -38,8 +41,8 @@ public class UserAccountMapperTest {
      * */
     @BeforeEach
     void setUp() {
-        // Inicializando o mapper
-        mapper = Mappers.getMapper(UserAccountMapper.class);
+        // Usando a instância do MapStruct para os testes
+        mapper = UserAccountMapper.INSTANCE;
 
         // Configurando o payload para os testes
         userAccountPayload = new UserAccountPayload();
@@ -52,9 +55,9 @@ public class UserAccountMapperTest {
         userAccountEntity.setAccountId(accountId);
         userAccountEntity.setAccountName("Usuário Teste");
         userAccountEntity.setEmail("usuario.teste@example.com");
-        userAccountEntity.setHashedPassword("senhaHasheada123");
+        userAccountEntity.setPasswordHash("senhaHasheada123");
         userAccountEntity.setAccountUsername("usuario.teste");
-        userAccountEntity.setAccountIsActive(true);
+        userAccountEntity.setAccountStatus(UserAccountStatus.ACTIVE);
         userAccountEntity.setCreatedAt(createdAt);
     }
 
@@ -72,7 +75,12 @@ public class UserAccountMapperTest {
         assertNotNull(result);
         assertEquals(userAccountPayload.getFullName(), result.getAccountName());
         assertEquals(userAccountPayload.getEmail(), result.getEmail());
-        assertEquals(userAccountPayload.getHashedPassword(), result.getHashedPassword());
+        assertEquals(userAccountPayload.getHashedPassword(), result.getPasswordHash());
+        // Verificando que outros campos não são definidos pelo mapper
+        assertEquals(null, result.getAccountId());
+        assertEquals(null, result.getAccountUsername());
+        assertEquals(null, result.getAccountStatus());
+        assertEquals(null, result.getCreatedAt());
         // Nota: A entidade não possui o campo subscriptionType, ele é definido como constante no mapper
     }
 
@@ -111,7 +119,7 @@ public class UserAccountMapperTest {
         assertNotNull(result);
         assertEquals(null, result.getAccountName());
         assertEquals(null, result.getEmail());
-        assertEquals(null, result.getHashedPassword());
+        assertEquals(null, result.getPasswordHash());
         // Nota: A entidade não possui o campo subscriptionType, ele é definido como constante no mapper
     }
 
