@@ -1,0 +1,65 @@
+/*
+ * 2025 © Black Hunter - Todos os Direitos Reservados.
+ * Classe protegida - Alterações somente por CODEOWNERS.
+ */
+package br.com.blackhunter.hunter_wallet.rest_api.auth.controller;
+
+import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.AuthenticationRequest;
+import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.ChallengeResponse;
+import br.com.blackhunter.hunter_wallet.rest_api.auth.service.AuthenticationService;
+import br.com.blackhunter.hunter_wallet.rest_api.core.dto.ApiResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * <p>Classe <code>AuthenticationController</code>.</p>
+ * <p>Controlador responsável pelo processo de autenticação baseado em challenge-response.</p>
+ * 
+ * @since 1.0.0
+ */
+@RestController
+@RequestMapping("/v1/public")
+public class AuthenticationController {
+    private static final String SUCCESS = "success";
+    private static final int SUCCESS_CODE = HttpStatus.OK.value();
+    
+    private final AuthenticationService authenticationService;
+
+    /**
+     * <p>Construtor para <code>AuthenticationController</code>.</p>
+     * 
+     * @param authenticationService serviço de autenticação
+     */
+    public AuthenticationController(AuthenticationService authenticationService) {
+        this.authenticationService = authenticationService;
+    }
+
+    /**
+     * <p>Endpoint para obter um novo desafio de autenticação.</p>
+     * 
+     * @return resposta contendo o nonce e timestamp de expiração
+     */
+    @GetMapping("/challenge")
+    public ResponseEntity<ApiResponse<ChallengeResponse>> getChallenge() {
+        ChallengeResponse challenge = authenticationService.getChallenge();
+        return ResponseEntity.ok(new ApiResponse<>(SUCCESS, SUCCESS_CODE, challenge));
+    }
+
+    /**
+     * <p>Endpoint para autenticação com resposta ao desafio.</p>
+     * 
+     * @param request objeto contendo o nonce, assinatura e deviceId
+     * @return token JWT para autenticação subsequente
+     */
+    @PostMapping("/auth")
+    public ResponseEntity<ApiResponse<String>> authenticate(@Valid @RequestBody AuthenticationRequest request) {
+        String token = authenticationService.authenticate(request);
+        return ResponseEntity.ok(new ApiResponse<>(SUCCESS, SUCCESS_CODE, token));
+    }
+}

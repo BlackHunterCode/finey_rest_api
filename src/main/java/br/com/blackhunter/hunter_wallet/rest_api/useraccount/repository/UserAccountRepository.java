@@ -1,8 +1,11 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountRepository.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository;
 
@@ -11,6 +14,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -29,4 +33,14 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
      * */
     @Query("SELECT COUNT(*) > 0 FROM UserAccountEntity u WHERE u.email = :email")
     boolean existsByEmail(@Param(value = "email") String email);
+
+    Optional<UserAccountEntity> findByEmail(String email);
+    
+    /**
+     * @param email E-mail do usuário a ser excluído
+     * <p>Remove a conta de usuário com o e-mail especificado.</p>
+     * 
+     * @return Número de registros excluídos
+     * */
+    void deleteByEmail(String email);
 }

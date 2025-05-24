@@ -1,8 +1,11 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountMapperImpl.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.mapper;
 
@@ -27,7 +30,7 @@ public class UserAccountMapperImpl implements UserAccountMapper {
         UserAccountEntity entity = new UserAccountEntity();
         entity.setAccountName(reqPayload.getFullName());
         entity.setEmail(reqPayload.getEmail());
-        entity.setHashedPassword(reqPayload.getHashedPassword());
+        entity.setPasswordHash(reqPayload.getHashedPassword());
         
         return entity;
     }

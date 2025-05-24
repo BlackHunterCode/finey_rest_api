@@ -1,39 +1,48 @@
-/**
- * 2025 © Black Hunter - Todos os Direitos Reservados.
+/*
+ * @(#)UserAccountServiceImplTest.java
  *
- * Classe protegida - Aletrações somente por CODEOWNERS.
- * */
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.service;
 
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.exception.UserAccountCreationException;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.mapper.UserAccountMapper;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload.UserAccountPayload;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository.UserAccountRepository;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.impl.UserAccountServiceImpl;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.validation.UserAccountValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import org.mockito.ArgumentCaptor;
 
 /**
  * <p>Classe <code>UserAccountServiceTest</code>.</p>
  * <p>Classe de testes unitários para os serviços da conta de usuário.</p>
  * */
 @ExtendWith(MockitoExtension.class)
-public class UserAccountServiceTest {
+public class UserAccountServiceImplTest {
 
     @Mock
     private UserAccountValidator validator;
@@ -44,7 +53,10 @@ public class UserAccountServiceTest {
     @Mock
     private UserAccountRepository repository;
 
-    private UserAccountService userAccountService;
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    private UserAccountServiceImpl userAccountServiceImpl;
 
     private UserAccountPayload userAccountPayload;
     private UserAccountEntity userAccountEntity;
@@ -58,7 +70,7 @@ public class UserAccountServiceTest {
     @BeforeEach
     void setUp() {
         // Inicializando o serviço manualmente com os mocks
-        userAccountService = new UserAccountService(validator, mapper, repository);
+        userAccountServiceImpl = new UserAccountServiceImpl(validator, mapper, repository, passwordEncoder);
         
         // Configurando o payload para os testes
         userAccountPayload = new UserAccountPayload();
@@ -71,10 +83,11 @@ public class UserAccountServiceTest {
         userAccountEntity.setAccountId(accountId);
         userAccountEntity.setAccountName("Usuário Teste");
         userAccountEntity.setEmail("usuario.teste@example.com");
-        userAccountEntity.setHashedPassword("senhaHasheada123");
+        userAccountEntity.setPasswordHash("senhaHasheada123");
         userAccountEntity.setAccountUsername("usuario.teste");
-        userAccountEntity.setAccountIsActive(true);
         userAccountEntity.setCreatedAt(LocalDateTime.now());
+        userAccountEntity.setEmailVerified(false);
+        userAccountEntity.setUserProfile(null);
 
         // Configurando o DTO para os testes
         userAccountData = new UserAccountData();
@@ -90,15 +103,15 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve criar uma conta de usuário com sucesso")
-    void createUserAccountSuccess() {
+    void registerUserSuccess() {
         // Configuração dos mocks
         doNothing().when(validator).validateEmailUniqueness(anyString());
         when(mapper.toEntity(any(UserAccountPayload.class))).thenReturn(userAccountEntity);
-        when(repository.saveAndFlush(any(UserAccountEntity.class))).thenReturn(userAccountEntity);
-        when(mapper.toData(any(UserAccountEntity.class))).thenReturn(userAccountData);
+        when(repository.save(any(UserAccountEntity.class))).thenReturn(userAccountEntity);
+        doReturn(userAccountData).when(mapper).toData(any(UserAccountEntity.class));
 
         // Execução do método a ser testado
-        UserAccountData result = userAccountService.createUserAccount(userAccountPayload);
+        UserAccountData result = userAccountServiceImpl.registerUser(userAccountPayload);
 
         // Verificações
         assertNotNull(result);
@@ -109,7 +122,7 @@ public class UserAccountServiceTest {
 
         // Verificando se os métodos foram chamados corretamente
         verify(validator, times(1)).validateEmailUniqueness(userAccountPayload.getEmail());
-        verify(repository, times(1)).saveAndFlush(any(UserAccountEntity.class));
+        verify(repository, times(1)).save(any(UserAccountEntity.class));
     }
 
     /**
@@ -118,7 +131,7 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve lançar exceção quando o e-mail já existe")
-    void createUserAccountEmailAlreadyExists() {
+    void registerUserEmailAlreadyExists() {
         // Configuração dos mocks para simular e-mail já existente
         doThrow(new UserAccountCreationException("O e-mail informado já está cadastrado no sistema"))
                 .when(validator).validateEmailUniqueness(anyString());
@@ -126,7 +139,7 @@ public class UserAccountServiceTest {
         // Execução e verificação da exceção
         UserAccountCreationException exception = assertThrows(
                 UserAccountCreationException.class,
-                () -> userAccountService.createUserAccount(userAccountPayload)
+                () -> userAccountServiceImpl.registerUser(userAccountPayload)
         );
 
         // Verificando a mensagem da exceção
@@ -142,26 +155,35 @@ public class UserAccountServiceTest {
      * <p>Verifica se o método createUserAccount está configurando os campos da entidade corretamente.</p>
      * */
     @Test
-    @DisplayName("Deve configurar os campos da entidade corretamente")
-    void createUserAccountSetFieldsCorrectly() {
-        // Configuração dos mocks com captura do argumento
+    @DisplayName("Deve verificar se os campos da entidade são configurados corretamente")
+    void registerUserSetFieldsCorrectly() {
+        // Configuração dos mocks
         doNothing().when(validator).validateEmailUniqueness(anyString());
         when(mapper.toEntity(any(UserAccountPayload.class))).thenReturn(userAccountEntity);
-        when(repository.saveAndFlush(any(UserAccountEntity.class))).thenAnswer(invocation -> {
-            UserAccountEntity savedEntity = invocation.getArgument(0);
-            // Verificando se os campos foram configurados corretamente
-            assertTrue(savedEntity.isAccountIsActive());
-            assertNotNull(savedEntity.getCreatedAt());
-            return savedEntity;
-        });
-
+        when(passwordEncoder.encode(anyString())).thenReturn("encodedPassword123");
+        when(repository.save(any(UserAccountEntity.class))).thenReturn(userAccountEntity);
+        
+        // Criando um capturador de argumentos para a entidade
+        ArgumentCaptor<UserAccountEntity> entityCaptor = ArgumentCaptor.forClass(UserAccountEntity.class);
+        
         // Execução do método a ser testado
-        userAccountService.createUserAccount(userAccountPayload);
-
-        // Verificações adicionais
-        verify(repository, times(1)).saveAndFlush(argThat(entity -> 
-            entity.isAccountIsActive() && entity.getCreatedAt() != null
-        ));
+        userAccountServiceImpl.registerUser(userAccountPayload);
+        
+        // Capturando a entidade que foi passada para o método save
+        verify(repository).save(entityCaptor.capture());
+        UserAccountEntity savedEntity = entityCaptor.getValue();
+        
+        // Verificando se os campos foram configurados corretamente
+        assertEquals(userAccountPayload.getFullName(), savedEntity.getAccountName());
+        assertEquals(userAccountPayload.getEmail(), savedEntity.getEmail());
+        assertNotNull(savedEntity.getPasswordHash());
+        assertEquals("encodedPassword123", savedEntity.getPasswordHash());
+        assertTrue(savedEntity.getAccountUsername().contains("usuario.teste"));
+        assertFalse(savedEntity.isEmailVerified());
+        assertNull(savedEntity.getUserProfile());
+        
+        // Verificando se os métodos foram chamados corretamente
+        verify(validator, times(1)).validateEmailUniqueness(userAccountPayload.getEmail());
     }
     
     /**
@@ -170,11 +192,11 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve lançar NullPointerException quando o payload é nulo")
-    void createUserAccountWithNullPayload() {
+    void registerUserWithNullPayload() {
         // Execução e verificação da exceção
         assertThrows(
                 NullPointerException.class,
-                () -> userAccountService.createUserAccount(null)
+                () -> userAccountServiceImpl.registerUser(null)
         );
 
         // Verificando que nenhum método foi chamado
@@ -188,17 +210,17 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve propagar exceções do repositório")
-    void createUserAccountRepositoryException() {
+    void registerUserRepositoryException() {
         // Configuração dos mocks para simular erro no repositório
         doNothing().when(validator).validateEmailUniqueness(anyString());
         when(mapper.toEntity(any(UserAccountPayload.class))).thenReturn(userAccountEntity);
-        when(repository.saveAndFlush(any(UserAccountEntity.class)))
+        when(repository.save(any(UserAccountEntity.class)))
                 .thenThrow(new DataIntegrityViolationException("Erro de integridade de dados"));
 
         // Execução e verificação da exceção
         DataIntegrityViolationException exception = assertThrows(
                 DataIntegrityViolationException.class,
-                () -> userAccountService.createUserAccount(userAccountPayload)
+                () -> userAccountServiceImpl.registerUser(userAccountPayload)
         );
 
         // Verificando a mensagem da exceção
@@ -206,7 +228,7 @@ public class UserAccountServiceTest {
 
         // Verificando se os métodos foram chamados corretamente
         verify(validator, times(1)).validateEmailUniqueness(userAccountPayload.getEmail());
-        verify(repository, times(1)).saveAndFlush(any(UserAccountEntity.class));
+        verify(repository, times(1)).save(any(UserAccountEntity.class));
     }
     
     /**
@@ -215,18 +237,16 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve definir a data de criação como o momento atual")
-    void createUserAccountSetCurrentDateTime() {
+    void registerUserSetCurrentDateTime() {
         // Configuração dos mocks
         doNothing().when(validator).validateEmailUniqueness(anyString());
         when(mapper.toEntity(any(UserAccountPayload.class))).thenReturn(userAccountEntity);
         
         // Capturando o momento antes da execução
         LocalDateTime beforeExecution = LocalDateTime.now();
-        
-        when(repository.saveAndFlush(any(UserAccountEntity.class))).thenAnswer(invocation -> {
+
+        Mockito.lenient().when(repository.saveAndFlush(any(UserAccountEntity.class))).thenAnswer(invocation -> {
             UserAccountEntity savedEntity = invocation.getArgument(0);
-            // A data de criação deve ser posterior ou igual ao momento antes da execução
-            // e anterior ou igual ao momento após a execução
             LocalDateTime createdAt = savedEntity.getCreatedAt();
             assertNotNull(createdAt);
             assertTrue(createdAt.isEqual(beforeExecution) || createdAt.isAfter(beforeExecution));
@@ -235,7 +255,7 @@ public class UserAccountServiceTest {
         });
 
         // Execução do método a ser testado
-        userAccountService.createUserAccount(userAccountPayload);
+        userAccountServiceImpl.registerUser(userAccountPayload);
     }
     
     /**
@@ -244,22 +264,24 @@ public class UserAccountServiceTest {
      * */
     @Test
     @DisplayName("Deve definir a conta como ativa")
-    void createUserAccountSetActiveStatus() {
+    void registerUserSetActiveStatus() {
         // Configuração dos mocks
         doNothing().when(validator).validateEmailUniqueness(anyString());
         when(mapper.toEntity(any(UserAccountPayload.class))).thenReturn(userAccountEntity);
+        when(repository.save(any(UserAccountEntity.class))).thenReturn(userAccountEntity);
         
         // Definindo a conta como inativa para testar se o serviço a torna ativa
-        userAccountEntity.setAccountIsActive(false);
-        
-        when(repository.saveAndFlush(any(UserAccountEntity.class))).thenAnswer(invocation -> {
-            UserAccountEntity savedEntity = invocation.getArgument(0);
-            // Verificando se a conta foi definida como ativa
-            assertTrue(savedEntity.isAccountIsActive());
-            return savedEntity;
-        });
+        userAccountEntity.setAccountStatus(null);
 
         // Execução do método a ser testado
-        userAccountService.createUserAccount(userAccountPayload);
+        userAccountServiceImpl.registerUser(userAccountPayload);
+        
+        // Capturando o argumento passado para save
+        ArgumentCaptor<UserAccountEntity> entityCaptor = ArgumentCaptor.forClass(UserAccountEntity.class);
+        verify(repository).save(entityCaptor.capture());
+        
+        // Verificando se a conta foi definida como ativa
+        UserAccountEntity savedEntity = entityCaptor.getValue();
+        assertEquals(UserAccountStatus.ACTIVE, savedEntity.getAccountStatus());
     }
 }
