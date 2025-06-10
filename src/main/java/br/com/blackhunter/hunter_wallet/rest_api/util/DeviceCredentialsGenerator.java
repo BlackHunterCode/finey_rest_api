@@ -36,7 +36,7 @@ public class DeviceCredentialsGenerator {
     @Value("${spring.profiles.active:}")
     private String activeProfile;
     
-    @Value("${app.dev.generate-credentials:false}")
+    @Value("${hunter.app.dev.generate-credentials:false}")
     private boolean generateCredentials;
     
     private String deviceId;
