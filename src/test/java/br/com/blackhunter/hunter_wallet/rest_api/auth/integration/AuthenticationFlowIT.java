@@ -90,15 +90,21 @@ public class AuthenticationFlowIT {
                 new TypeReference<ApiResponse<ChallengeResponse>>() {});
         
         UUID nonce = challengeResponse.getData().getNonce();
+        String nonceStr = nonce.toString();
         
         // Passo 2: Calcular a assinatura HMAC
-        String signature = calculateHmac(nonce.toString(), defaultSecret);
+        String signature = calculateHmac(nonceStr, defaultSecret);
+        String email = "test@example.com";
+        String password = "password123";
         
         // Passo 3: Enviar a resposta ao desafio
-        AuthenticationRequest authRequest = new AuthenticationRequest(nonce, signature, TEST_DEVICE_ID);
+        AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
         
         MvcResult authResult = mockMvc.perform(post("/v1/public/auth")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", TEST_DEVICE_ID)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", nonceStr)
                 .content(objectMapper.writeValueAsString(authRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
@@ -124,12 +130,19 @@ public class AuthenticationFlowIT {
     void authenticate_WithInvalidNonce_ShouldReturnBadRequest() throws Exception {
         // Arrange
         UUID invalidNonce = UUID.randomUUID(); // Nonce que não foi gerado pelo servidor
-        String signature = calculateHmac(invalidNonce.toString(), defaultSecret);
-        AuthenticationRequest authRequest = new AuthenticationRequest(invalidNonce, signature, TEST_DEVICE_ID);
+        String invalidNonceStr = invalidNonce.toString();
+        String signature = calculateHmac(invalidNonceStr, defaultSecret);
+        String email = "test@example.com";
+        String password = "password123";
+        
+        AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
         
         // Act & Assert
         mockMvc.perform(post("/v1/public/auth")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", TEST_DEVICE_ID)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", invalidNonceStr)
                 .content(objectMapper.writeValueAsString(authRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("error"));
@@ -149,14 +162,53 @@ public class AuthenticationFlowIT {
                 new TypeReference<ApiResponse<ChallengeResponse>>() {});
         
         UUID nonce = challengeResponse.getData().getNonce();
+        String nonceStr = nonce.toString();
+        String email = "test@example.com";
+        String password = "password123";
         
         // Usar uma assinatura inválida
         String invalidSignature = "invalid-signature-value";
-        AuthenticationRequest authRequest = new AuthenticationRequest(nonce, invalidSignature, TEST_DEVICE_ID);
+        AuthenticationRequest authRequest = new AuthenticationRequest(email, password);
         
         // Act & Assert
         mockMvc.perform(post("/v1/public/auth")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", TEST_DEVICE_ID)
+                .header("X-APP-Signature", invalidSignature)
+                .header("X-Nonce", nonceStr)
+                .content(objectMapper.writeValueAsString(authRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value("error"));
+    }
+    
+    @Test
+    @DisplayName("Deve rejeitar autenticação com credenciais inválidas")
+    void authenticate_WithInvalidCredentials_ShouldReturnBadRequest() throws Exception {
+        // Passo 1: Obter o desafio
+        MvcResult challengeResult = mockMvc.perform(get("/v1/public/challenge")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        ApiResponse<ChallengeResponse> challengeResponse = objectMapper.readValue(
+                challengeResult.getResponse().getContentAsString(),
+                new TypeReference<ApiResponse<ChallengeResponse>>() {});
+        
+        UUID nonce = challengeResponse.getData().getNonce();
+        String nonceStr = nonce.toString();
+        String signature = calculateHmac(nonceStr, defaultSecret);
+        
+        // Usar credenciais inválidas
+        String invalidEmail = "nonexistent@example.com";
+        String invalidPassword = "wrong-password";
+        AuthenticationRequest authRequest = new AuthenticationRequest(invalidEmail, invalidPassword);
+        
+        // Act & Assert
+        mockMvc.perform(post("/v1/public/auth")
+                .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", TEST_DEVICE_ID)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", nonceStr)
                 .content(objectMapper.writeValueAsString(authRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("error"));

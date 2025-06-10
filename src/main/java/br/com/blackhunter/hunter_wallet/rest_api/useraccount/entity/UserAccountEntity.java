@@ -9,11 +9,13 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity;
 
+import br.com.blackhunter.hunter_wallet.rest_api.finance.transaction.entity.TransactionEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -47,6 +49,9 @@ public class UserAccountEntity {
 
     @OneToOne(mappedBy = "userAccount", cascade = CascadeType.ALL)
     private UserProfileEntity userProfile;
+
+    @OneToMany(mappedBy = "userAccount", cascade = CascadeType.ALL)
+    private Set<TransactionEntity> transactions;
 
     /**
      * Construtor padrão da classe.

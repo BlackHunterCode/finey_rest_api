@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -53,13 +54,22 @@ public class AuthenticationController {
 
     /**
      * <p>Endpoint para autenticação com resposta ao desafio.</p>
+     * <p>O deviceId, nonce e a assinatura são obtidos dos headers da requisição.</p>
      * 
-     * @param request objeto contendo o nonce, assinatura e deviceId
+     * @param request objeto contendo email e password
+     * @param deviceId identificador do dispositivo obtido do header X-Device-ID
+     * @param signature assinatura HMAC obtida do header X-APP-Signature
+     * @param nonce UUID do desafio obtido do header X-Nonce
      * @return token JWT para autenticação subsequente
      */
     @PostMapping("/auth")
-    public ResponseEntity<ApiResponse<String>> authenticate(@Valid @RequestBody AuthenticationRequest request) {
-        String token = authenticationService.authenticate(request);
+    public ResponseEntity<ApiResponse<String>> authenticate(
+            @Valid @RequestBody AuthenticationRequest request,
+            @RequestHeader("X-Device-ID") String deviceId,
+            @RequestHeader("X-APP-Signature") String signature,
+            @RequestHeader("X-Nonce") String nonce) {
+        
+        String token = authenticationService.authenticate(request, deviceId, signature, nonce);
         return ResponseEntity.ok(new ApiResponse<>(SUCCESS, SUCCESS_CODE, token));
     }
 }

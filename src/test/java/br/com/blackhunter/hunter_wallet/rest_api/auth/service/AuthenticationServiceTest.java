@@ -7,6 +7,9 @@ package br.com.blackhunter.hunter_wallet.rest_api.auth.service;
 import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.AuthenticationRequest;
 import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.ChallengeResponse;
 import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository.UserAccountRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.UUID;
 
@@ -39,6 +43,12 @@ public class AuthenticationServiceTest {
     
     @Mock
     private HmacService hmacService;
+    
+    @Mock
+    private UserAccountRepository userAccountRepository;
+    
+    @Mock
+    private PasswordEncoder passwordEncoder;
 
     @InjectMocks
     private AuthenticationService authenticationService;
@@ -68,25 +78,95 @@ public class AuthenticationServiceTest {
     void authenticate_WithValidChallengeResponse_ShouldReturnJwtToken() {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "valid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNjE2MjM5MDIyfQ.1234567890";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
+        UserAccountEntity userAccount = new UserAccountEntity();
+        userAccount.setEmail(email);
+        userAccount.setPasswordHash("hashedPassword");
+        userAccount.setAccountStatus(UserAccountStatus.ACTIVE);
         
         when(challengeService.validateChallenge(nonce)).thenReturn(true);
         when(hmacService.validateSignature(nonce, signature, deviceId)).thenReturn(true);
+        when(userAccountRepository.findByEmail(email)).thenReturn(java.util.Optional.of(userAccount));
+        when(passwordEncoder.matches(password, userAccount.getPasswordHash())).thenReturn(true);
         when(jwtService.generateToken(any(Authentication.class))).thenReturn(expectedToken);
 
         // Act
-        String actualToken = authenticationService.authenticate(request);
+        String actualToken = authenticationService.authenticate(request, deviceId, signature, nonceStr);
 
         // Assert
         assertEquals(expectedToken, actualToken);
         verify(challengeService, times(1)).validateChallenge(nonce);
         verify(hmacService, times(1)).validateSignature(nonce, signature, deviceId);
-        verify(jwtService, times(1)).generateToken(any(Authentication.class));
+        verify(userAccountRepository, times(1)).findByEmail(email);
+        verify(passwordEncoder, times(1)).matches(password, userAccount.getPasswordHash());
         verify(challengeService, times(1)).removeChallenge(nonce);
+        verify(jwtService, times(1)).generateToken(any(Authentication.class));
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar credenciais inválidas")
+    void authenticate_WithInvalidCredentials_ShouldThrowBusinessException() {
+        // Arrange
+        UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
+        String signature = "valid-signature";
+        String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "wrong-password";
+        
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
+        UserAccountEntity userAccount = new UserAccountEntity();
+        userAccount.setEmail(email);
+        userAccount.setPasswordHash("hashedPassword");
+        userAccount.setAccountStatus(UserAccountStatus.ACTIVE);
+        
+        when(challengeService.validateChallenge(nonce)).thenReturn(true);
+        when(hmacService.validateSignature(nonce, signature, deviceId)).thenReturn(true);
+        when(userAccountRepository.findByEmail(email)).thenReturn(java.util.Optional.of(userAccount));
+        when(passwordEncoder.matches(password, userAccount.getPasswordHash())).thenReturn(false);
+
+        // Act & Assert
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            authenticationService.authenticate(request, deviceId, signature, nonceStr);
+        });
+        
+        assertEquals("Invalid email or password", exception.getMessage());
+        verify(challengeService, times(1)).validateChallenge(nonce);
+        verify(hmacService, times(1)).validateSignature(nonce, signature, deviceId);
+        verify(userAccountRepository, times(1)).findByEmail(email);
+        verify(passwordEncoder, times(1)).matches(password, userAccount.getPasswordHash());
+        verify(jwtService, never()).generateToken(any());
+    }
+
+    @Test
+    @DisplayName("Deve rejeitar formato de nonce inválido")
+    void authenticate_WithInvalidNonceFormat_ShouldThrowBusinessException() {
+        // Arrange
+        String invalidNonceStr = "not-a-uuid";
+        String signature = "valid-signature";
+        String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
+        
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
+
+        // Act & Assert
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            authenticationService.authenticate(request, deviceId, signature, invalidNonceStr);
+        });
+        
+        assertEquals("Invalid nonce format", exception.getMessage());
+        verify(challengeService, never()).validateChallenge(any());
+        verify(hmacService, never()).validateSignature(any(), any(), any());
+        verify(userAccountRepository, never()).findByEmail(any());
+        verify(jwtService, never()).generateToken(any());
     }
 
     @Test
@@ -94,21 +174,25 @@ public class AuthenticationServiceTest {
     void authenticate_WithInvalidChallenge_ShouldThrowBusinessException() {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "valid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
         
         when(challengeService.validateChallenge(nonce)).thenReturn(false);
 
         // Act & Assert
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            authenticationService.authenticate(request);
+            authenticationService.authenticate(request, deviceId, signature, nonceStr);
         });
         
         assertEquals("Invalid or expired challenge", exception.getMessage());
         verify(challengeService, times(1)).validateChallenge(nonce);
         verify(hmacService, never()).validateSignature(any(), any(), any());
+        verify(userAccountRepository, never()).findByEmail(any());
         verify(jwtService, never()).generateToken(any());
     }
 
@@ -117,22 +201,26 @@ public class AuthenticationServiceTest {
     void authenticate_WithInvalidSignature_ShouldThrowBusinessException() {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "invalid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
         
         when(challengeService.validateChallenge(nonce)).thenReturn(true);
         when(hmacService.validateSignature(nonce, signature, deviceId)).thenReturn(false);
 
         // Act & Assert
         BusinessException exception = assertThrows(BusinessException.class, () -> {
-            authenticationService.authenticate(request);
+            authenticationService.authenticate(request, deviceId, signature, nonceStr);
         });
         
         assertEquals("Invalid signature", exception.getMessage());
         verify(challengeService, times(1)).validateChallenge(nonce);
         verify(hmacService, times(1)).validateSignature(nonce, signature, deviceId);
+        verify(userAccountRepository, never()).findByEmail(any());
         verify(jwtService, never()).generateToken(any());
     }
 

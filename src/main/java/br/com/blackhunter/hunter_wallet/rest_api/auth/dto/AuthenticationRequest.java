@@ -4,26 +4,23 @@
  */
 package br.com.blackhunter.hunter_wallet.rest_api.auth.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
-import java.util.UUID;
 
 /**
  * <p>Classe <code>AuthenticationRequest</code>.</p>
  * <p>DTO que representa a requisição de autenticação com resposta ao desafio.</p>
+ * <p>Os campos deviceId, signature e nonce foram movidos para os headers da requisição.</p>
  * 
  * @since 1.0.0
  */
 public class AuthenticationRequest {
-    @NotNull(message = "Nonce is required")
-    private UUID nonce;
+    @NotBlank(message = "Email is required")
+    @Email(message = "Invalid email format")
+    private String email;
     
-    @NotBlank(message = "Response signature is required")
-    private String signature;
-    
-    @NotBlank(message = "Device ID is required")
-    private String deviceId;
+    @NotBlank(message = "Password is required")
+    private String password;
 
     /**
      * <p>Construtor padrão para <code>AuthenticationRequest</code>.</p>
@@ -34,67 +31,47 @@ public class AuthenticationRequest {
     /**
      * <p>Construtor para <code>AuthenticationRequest</code>.</p>
      * 
-     * @param nonce UUID do desafio original
-     * @param signature assinatura HMAC gerada pelo cliente
-     * @param deviceId identificador único do dispositivo
+     * @param email email do usuário (username)
+     * @param password senha do usuário
      */
-    public AuthenticationRequest(UUID nonce, String signature, String deviceId) {
-        this.nonce = nonce;
-        this.signature = signature;
-        this.deviceId = deviceId;
+    public AuthenticationRequest(String email, String password) {
+        this.email = email;
+        this.password = password;
     }
 
     /**
-     * <p>Obtém o nonce do desafio.</p>
+     * <p>Obtém o email do usuário.</p>
      * 
-     * @return UUID do desafio
+     * @return email do usuário
      */
-    public UUID getNonce() {
-        return nonce;
+    public String getEmail() {
+        return email;
     }
 
     /**
-     * <p>Define o nonce do desafio.</p>
+     * <p>Define o email do usuário.</p>
      * 
-     * @param nonce UUID do desafio
+     * @param email email do usuário
      */
-    public void setNonce(UUID nonce) {
-        this.nonce = nonce;
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     /**
-     * <p>Obtém a assinatura HMAC.</p>
+     * <p>Obtém a senha do usuário.</p>
      * 
-     * @return assinatura gerada pelo cliente
+     * @return senha do usuário
      */
-    public String getSignature() {
-        return signature;
+    public String getPassword() {
+        return password;
     }
 
     /**
-     * <p>Define a assinatura HMAC.</p>
+     * <p>Define a senha do usuário.</p>
      * 
-     * @param signature assinatura gerada pelo cliente
+     * @param password senha do usuário
      */
-    public void setSignature(String signature) {
-        this.signature = signature;
-    }
-
-    /**
-     * <p>Obtém o ID do dispositivo.</p>
-     * 
-     * @return identificador único do dispositivo
-     */
-    public String getDeviceId() {
-        return deviceId;
-    }
-
-    /**
-     * <p>Define o ID do dispositivo.</p>
-     * 
-     * @param deviceId identificador único do dispositivo
-     */
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
+    public void setPassword(String password) {
+        this.password = password;
     }
 }

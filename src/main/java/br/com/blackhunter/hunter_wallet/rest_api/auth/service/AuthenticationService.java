@@ -7,9 +7,13 @@ package br.com.blackhunter.hunter_wallet.rest_api.auth.service;
 import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.AuthenticationRequest;
 import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.ChallengeResponse;
 import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository.UserAccountRepository;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -26,6 +30,8 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final ChallengeService challengeService;
     private final HmacService hmacService;
+    private final UserAccountRepository userAccountRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * <p>Construtor para <code>AuthenticationService</code>.</p>
@@ -33,11 +39,19 @@ public class AuthenticationService {
      * @param jwtService serviço para geração de tokens JWT
      * @param challengeService serviço para gerenciamento de desafios
      * @param hmacService serviço para validação de assinaturas HMAC
+     * @param userAccountRepository repositório de contas de usuário
+     * @param passwordEncoder codificador de senhas
      */
-    public AuthenticationService(JwtService jwtService, ChallengeService challengeService, HmacService hmacService) {
+    public AuthenticationService(JwtService jwtService, 
+                                 ChallengeService challengeService, 
+                                 HmacService hmacService,
+                                 UserAccountRepository userAccountRepository,
+                                 PasswordEncoder passwordEncoder) {
         this.jwtService = jwtService;
         this.challengeService = challengeService;
         this.hmacService = hmacService;
+        this.userAccountRepository = userAccountRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     /**
@@ -50,16 +64,26 @@ public class AuthenticationService {
     }
 
     /**
-     * <p>Autentica um usuário com base na resposta ao desafio.</p>
+     * <p>Autentica um usuário com base na resposta ao desafio e nas credenciais do usuário.</p>
+     * <p>O deviceId, nonce e a assinatura são obtidos dos headers da requisição.</p>
      * 
-     * @param request objeto contendo o nonce, assinatura e deviceId
+     * @param request objeto contendo email e password
+     * @param deviceId identificador do dispositivo obtido do header X-Device-ID
+     * @param signature assinatura HMAC obtida do header X-APP-Signature
+     * @param nonceStr UUID do desafio obtido do header X-Nonce
      * @return token JWT para autenticação subsequente
-     * @throws BusinessException se o desafio for inválido ou a assinatura for incorreta
+     * @throws BusinessException se o desafio for inválido, a assinatura for incorreta ou as credenciais forem inválidas
      */
-    public String authenticate(AuthenticationRequest request) {
-        UUID nonce = request.getNonce();
-        String signature = request.getSignature();
-        String deviceId = request.getDeviceId();
+    public String authenticate(AuthenticationRequest request, String deviceId, String signature, String nonceStr) {
+        UUID nonce;
+        try {
+            nonce = UUID.fromString(nonceStr);
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("Invalid nonce format");
+        }
+        
+        String email = request.getEmail();
+        String password = request.getPassword();
         
         // Valida se o desafio existe e não está expirado
         if (!challengeService.validateChallenge(nonce)) {
@@ -71,12 +95,26 @@ public class AuthenticationService {
             throw new BusinessException("Invalid signature");
         }
         
+        // Valida as credenciais do usuário
+        UserAccountEntity userAccount = userAccountRepository.findByEmail(email)
+                .orElseThrow(() -> new BusinessException("Invalid email or password"));
+        
+        // Verifica se a senha está correta
+        if (!passwordEncoder.matches(password, userAccount.getPasswordHash())) {
+            throw new BusinessException("Invalid email or password");
+        }
+        
+        // Verifica se a conta está ativa
+        if (userAccount.getAccountStatus() != UserAccountStatus.ACTIVE) {
+            throw new BusinessException("Account is not active");
+        }
+        
         // Remove o desafio após uso bem-sucedido
         challengeService.removeChallenge(nonce);
         
-        // Cria um objeto Authentication com o deviceId como principal
+        // Cria um objeto Authentication com o email como principal
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                deviceId,
+                email,
                 null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
         );

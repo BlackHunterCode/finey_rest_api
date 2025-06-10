@@ -75,18 +75,28 @@ public class AuthenticationControllerTest {
     void authenticate_WithValidChallengeResponse_ShouldReturnJwtToken() throws Exception {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "valid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         String expectedToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwiaWF0IjoxNjE2MjM5MDIyfQ.1234567890";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
         
-        when(authenticationService.authenticate(any(AuthenticationRequest.class))).thenReturn(expectedToken);
+        when(authenticationService.authenticate(any(AuthenticationRequest.class), 
+                                              any(String.class), 
+                                              any(String.class),
+                                              any(String.class)))
+            .thenReturn(expectedToken);
 
         // Act & Assert
         MvcResult result = mockMvc.perform(post("/v1/public/auth")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", deviceId)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", nonceStr)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("success"))
@@ -107,18 +117,27 @@ public class AuthenticationControllerTest {
     void authenticate_WithInvalidChallenge_ShouldReturnError() throws Exception {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "valid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
         
-        when(authenticationService.authenticate(any(AuthenticationRequest.class)))
+        when(authenticationService.authenticate(any(AuthenticationRequest.class), 
+                                              any(String.class), 
+                                              any(String.class),
+                                              any(String.class)))
                 .thenThrow(new BusinessException("Invalid or expired challenge"));
 
         // Act & Assert
         mockMvc.perform(post("/v1/public/auth")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", deviceId)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", nonceStr)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("error"));
@@ -129,18 +148,27 @@ public class AuthenticationControllerTest {
     void authenticate_WithInvalidSignature_ShouldReturnError() throws Exception {
         // Arrange
         UUID nonce = UUID.randomUUID();
+        String nonceStr = nonce.toString();
         String signature = "invalid-signature";
         String deviceId = "test-device-123";
+        String email = "test@example.com";
+        String password = "password123";
         
-        AuthenticationRequest request = new AuthenticationRequest(nonce, signature, deviceId);
+        AuthenticationRequest request = new AuthenticationRequest(email, password);
         
-        when(authenticationService.authenticate(any(AuthenticationRequest.class)))
+        when(authenticationService.authenticate(any(AuthenticationRequest.class), 
+                                              any(String.class), 
+                                              any(String.class),
+                                              any(String.class)))
                 .thenThrow(new BusinessException("Invalid signature"));
 
         // Act & Assert
         mockMvc.perform(post("/v1/public/auth")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Device-ID", deviceId)
+                .header("X-APP-Signature", signature)
+                .header("X-Nonce", nonceStr)
                 .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value("error"));

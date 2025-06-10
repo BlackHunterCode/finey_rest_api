@@ -19,11 +19,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * <p>Classe <code>ClientValidationFilter</code>.</p>
  * <p>Filtro para validação de clientes que acessam a API.</p>
- * <p>Este filtro valida os headers de identificação do dispositivo, exceto para endpoints de autenticação.</p>
+ * <p>Este filtro valida os headers de identificação do dispositivo (X-Device-ID, X-APP-Signature e X-Nonce), exceto para endpoints públicos.</p>
  * 
  * @since 1.0.0
  */
@@ -35,8 +36,7 @@ public class ClientValidationFilter extends OncePerRequestFilter {
     
     // Lista de endpoints públicos que não requerem validação de cliente
     private final List<String> publicEndpoints = Arrays.asList(
-            "/v1/public/challenge",
-            "/v1/public/auth"
+            "/v1/public/challenge"
     );
     
     // Padrão para endpoints de desenvolvimento
@@ -60,6 +60,7 @@ public class ClientValidationFilter extends OncePerRequestFilter {
         // Para todos os outros endpoints, valida os headers do cliente
         String deviceId = request.getHeader("X-Device-ID");
         String appSignature = request.getHeader("X-APP-Signature");
+        String nonce = request.getHeader("X-Nonce");
 
         // Validação do Device ID
         if (deviceId == null || deviceId.isEmpty()) {
@@ -72,7 +73,21 @@ public class ClientValidationFilter extends OncePerRequestFilter {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing X-APP-Signature header");
             return;
         }
+
+        // Validação do nonce
+        if (nonce == null || nonce.isEmpty()) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing X-Nonce header");
+            return;
+        }
         
+        // Validação do formato do nonce (deve ser um UUID válido)
+        try {
+            UUID.fromString(nonce);
+        } catch (IllegalArgumentException e) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid X-Nonce format");
+            return;
+        }
+
         // Verifica se estamos em ambiente de desenvolvimento
         boolean isDev = Arrays.asList(environment.getActiveProfiles()).contains("dev");
         
