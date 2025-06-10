@@ -43,4 +43,13 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
      * @return Número de registros excluídos
      * */
     void deleteByEmail(String email);
+
+    /**
+     * @param email e-mail do usuário a ser verificado
+     * <p>Busca o ID do usuário associado ao e-mail fornecido.</p>
+     *
+     * @return ID do usuário se existir, ou <code>null</code> se não existir.
+     */
+    @Query("SELECT u.accountId FROM UserAccountEntity u WHERE u.email = :email")
+    Optional<UUID> findUserIdByEmail(@Param(value = "email") String email);
 }

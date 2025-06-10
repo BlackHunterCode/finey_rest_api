@@ -1,7 +1,12 @@
 /*
- * 2025 © Black Hunter - Todos os Direitos Reservados.
- * Classe protegida - Alterações somente por CODEOWNERS.
+ * @(#)AuthenticationController.java
+ *
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
  */
+
 package br.com.blackhunter.hunter_wallet.rest_api.auth.controller;
 
 import br.com.blackhunter.hunter_wallet.rest_api.auth.dto.AuthenticationRequest;

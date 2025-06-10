@@ -1,3 +1,12 @@
+/*
+ * @(#)UserAccountService.java
+ *
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
+
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.service;
 
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
@@ -16,6 +25,7 @@ public interface UserAccountService {
     /* Não expostos como endpoint (usados internamente) */
     UserAccountData findById(UUID userId);
     UserAccountEntity findEntityById(UUID userId);
+    UUID findUserIdByEmail(String email);
     void verifyEmail(String verificationToken);
     void initiatePasswordReset(String email);
     void completePasswordReset(String token, String newPassword);

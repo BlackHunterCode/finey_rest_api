@@ -88,6 +88,12 @@ public class UserAccountServiceImpl implements UserAccountService {
     }
 
     @Override
+    public UUID findUserIdByEmail(String email) {
+        return repository.findUserIdByEmail(email)
+                .orElseThrow(() -> new EntityNotFoundException("The user account with the provided email does not exist."));
+    }
+
+    @Override
     public void verifyEmail(String verificationToken) {
         // Fazer...
     }
