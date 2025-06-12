@@ -9,10 +9,7 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Lob;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Data;
 
 import java.util.UUID;
@@ -21,8 +18,16 @@ import java.util.UUID;
 @Table(name = "hw_pluggy_access_data")
 @Data
 public class PluggyAccessDataEntity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private UUID accessId;
     @Lob
     @Column(name = "access_token", unique = true)
     private String accessToken;
+
+    public PluggyAccessDataEntity() { }
+
+    public PluggyAccessDataEntity(String accessToken) {
+        this.accessToken = accessToken;
+    }
 }
