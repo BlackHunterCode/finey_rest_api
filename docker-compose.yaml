@@ -1,0 +1,40 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: redis_container
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - hw-network
+    healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 30s
+        timeout: 10s
+        retries: 5
+        start_period: 30s
+  hw-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hw_api_container
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - hw-network
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  hw-network:
+    driver: bridge

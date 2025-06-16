@@ -16,6 +16,8 @@ package br.com.blackhunter.hunter_wallet.rest_api;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import io.github.cdimascio.dotenv.Dotenv;
+
 /**
  * Classe <code>RestApiApplication</code>
  * <p>Classe principal da aplicação Hunter Wallet REST API.</p>
@@ -29,7 +31,14 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class RestApiApplication {
 
 	public static void main(String[] args) {
+		// Carrega as variáveis de ambiente do arquivo .env
+		Dotenv dotenv = Dotenv.load();
+		
+		// Configura as variáveis de ambiente do sistema
+		dotenv.entries().forEach(entry -> 
+			System.setProperty(entry.getKey(), entry.getValue())
+		);
+		
 		SpringApplication.run(RestApiApplication.class, args);
 	}
-
 }

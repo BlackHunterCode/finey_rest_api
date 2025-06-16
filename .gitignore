@@ -35,7 +35,7 @@ build/
 ### Keys ###
 src/main/resources/app.key
 src/main/resources/app.pub
-src/main/resources/.env
+.env
 .env
 
 src/test/resources/test-private.key

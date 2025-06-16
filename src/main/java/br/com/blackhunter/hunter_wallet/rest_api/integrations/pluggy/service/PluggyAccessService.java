@@ -10,5 +10,5 @@
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.service;
 
 public interface PluggyAccessService {
-    String getAndSaveAccessTokenIfNecessary();
+    String getAndSaveAccessTokenEncryptedIfNecessary();
 }

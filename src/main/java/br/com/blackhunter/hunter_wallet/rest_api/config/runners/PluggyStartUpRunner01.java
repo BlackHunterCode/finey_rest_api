@@ -41,8 +41,8 @@ public class PluggyStartUpRunner01 implements ApplicationRunner {
         try
         {
             LogUtil.startSpinner("Obtendo token de acesso do Pluggy");
-            pluggyAccessService.getAndSaveAccessTokenIfNecessary();
-            LogUtil.stopSpinner("Token de acesso obtido com sucesso", true);
+            String token = pluggyAccessService.getAndSaveAccessTokenEncryptedIfNecessary();
+            LogUtil.stopSpinner("Token de acesso obtido com sucesso - " + token , true);
         }
         catch (Exception e)
         {
@@ -55,10 +55,10 @@ public class PluggyStartUpRunner01 implements ApplicationRunner {
     private void initializeLogs() {
         this.startTime = LocalDateTime.now();
         System.out.println("\n==========================================================");
-        System.out.println("                  PLUGGY STARTUP RUNNER                   ");
+        System.out.println("               PLUGGY STARTUP RUNNER 01                   ");
         System.out.println("==========================================================\n");
 
-        System.out.println("➡️  Sobre: Testar conexão com o Pluggy e obter o token de acesso.");
+        System.out.println("➡️ Sobre: Testar conexão com o Pluggy e obter o token de acesso.");
         System.out.println("🔄 Status: Iniciando...");
         System.out.println("⏰ Hora de início: " + this.startTime.format(FORMATTER));
 
