@@ -8,6 +8,7 @@ package br.com.blackhunter.hunter_wallet.rest_api.core.handler;
 
 import br.com.blackhunter.hunter_wallet.rest_api.core.dto.ApiResponse;
 import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import br.com.blackhunter.hunter_wallet.rest_api.core.trace.service.StackTraceExceptionService;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.exception.UserAccountCreationException;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
@@ -27,6 +28,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * <p>Classe <code>GlobalExceptionHandler</code>.</p>
@@ -36,12 +38,29 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends BaseExceptionHandler {
 
+    private final StackTraceExceptionService stackTraceExceptionService;
+
+    public GlobalExceptionHandler(StackTraceExceptionService stackTraceExceptionService) {
+        this.stackTraceExceptionService = stackTraceExceptionService;
+    }
+
     /**
      * Trata exceções de negócio (BusinessException).
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ApiResponse<String>> handleBusinessException(BusinessException ex, WebRequest request) {
-        return badRequest(ex.getMessage(), request);
+        // Save the exception and get the trace ID
+        UUID traceId = null;
+        try {
+            traceId = stackTraceExceptionService.saveException(ex);
+        } catch (Exception e) {
+            // If saving fails, generate a new trace ID as fallback
+            traceId = UUID.randomUUID();
+            System.err.println("Failed to save exception, using fallback traceId: " + traceId);
+            System.err.println("Error details: " + e.getMessage());
+        }
+        
+        return badRequest(ex.getMessage(), request, traceId);
     }
 
     /**
@@ -49,7 +68,16 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
      */
     @ExceptionHandler(UserAccountCreationException.class)
     public ResponseEntity<ApiResponse<String>> handleUserAccountCreationException(UserAccountCreationException ex, WebRequest request) {
-        return badRequest(ex.getMessage(), request);
+        UUID traceId = null;
+        try {
+            traceId = stackTraceExceptionService.saveException(ex);
+        } catch (Exception e) {
+            traceId = UUID.randomUUID();
+            System.err.println("Failed to save UserAccountCreationException, using fallback traceId: " + traceId);
+            System.err.println("Error details: " + e.getMessage());
+        }
+        
+        return badRequest(ex.getMessage(), request, traceId);
     }
 
     /**
@@ -57,7 +85,16 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
      */
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ApiResponse<String>> handleEntityNotFoundException(EntityNotFoundException ex, WebRequest request) {
-        return notFound(ex.getMessage(), request);
+        UUID traceId = null;
+        try {
+            traceId = stackTraceExceptionService.saveException(ex);
+        } catch (Exception e) {
+            traceId = UUID.randomUUID();
+            System.err.println("Failed to save EntityNotFoundException, using fallback traceId: " + traceId);
+            System.err.println("Error details: " + e.getMessage());
+        }
+        
+        return notFound(ex.getMessage(), request, traceId);
     }
 
     /**
@@ -68,16 +105,18 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
             MethodArgumentNotValidException ex, WebRequest request) {
         
         Map<String, String> errors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error -> 
+        ex.getBindingResult().getFieldErrors().forEach(error ->
             errors.put(error.getField(), error.getDefaultMessage())
         );
-        
+
+        UUID traceId = stackTraceExceptionService.saveException(ex);
         ApiResponse<Map<String, String>> apiResponse = new ApiResponse<>(
             VALIDATION_ERROR, 
             HttpStatus.BAD_REQUEST.value(), 
-            errors
+            errors,
+            traceId
         );
-        
+
         return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
     }
 
@@ -92,11 +131,13 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
         ex.getConstraintViolations().forEach(violation -> 
             errors.put(violation.getPropertyPath().toString(), violation.getMessage())
         );
-        
+
+        UUID traceId = stackTraceExceptionService.saveException(ex);
         ApiResponse<Map<String, String>> apiResponse = new ApiResponse<>(
             VALIDATION_ERROR, 
             HttpStatus.BAD_REQUEST.value(), 
-            errors
+            errors,
+            traceId
         );
         
         return new ResponseEntity<>(apiResponse, HttpStatus.BAD_REQUEST);
@@ -111,8 +152,9 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
         
         String message = String.format("The parameter '%s' with value '%s' could not be converted to type '%s'", 
             ex.getName(), ex.getValue(), ex.getRequiredType().getSimpleName());
-        
-        return badRequest(message, request);
+
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return badRequest(message, request, traceId);
     }
 
     /**
@@ -121,9 +163,9 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<String>> handleMissingServletRequestParameterException(
             MissingServletRequestParameterException ex, WebRequest request) {
-        
+        UUID traceId = stackTraceExceptionService.saveException(ex);
         String message = String.format("The parameter '%s' is required", ex.getParameterName());
-        return badRequest(message, request);
+        return badRequest(message, request, traceId);
     }
 
     /**
@@ -132,8 +174,8 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadableException(
             HttpMessageNotReadableException ex, WebRequest request) {
-        
-        return badRequest("Invalid request format", request);
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return badRequest("Invalid request format", request, traceId);
     }
 
     /**
@@ -142,8 +184,8 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<String>> handleDataIntegrityViolationException(
             DataIntegrityViolationException ex, WebRequest request) {
-        
-        return badRequest("Data integrity violation", request);
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return badRequest("Data integrity violation", request, traceId);
     }
 
     /**
@@ -152,11 +194,9 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<String>> handleMaxUploadSizeExceededException(
             MaxUploadSizeExceededException ex, WebRequest request) {
-        
-        return badRequest("Maximum upload size exceeded", request);
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return badRequest("Maximum upload size exceeded", request, traceId);
     }
-
-
 
     /**
      * Trata exceções de handler não encontrado.
@@ -167,8 +207,8 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
         
         String message = String.format("No handler found for %s %s", 
             ex.getHttpMethod(), ex.getRequestURL());
-        
-        return notFound(message, request);
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return notFound(message, request, traceId);
     }
 
     /**
@@ -176,6 +216,7 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleAllUncaughtException(Exception ex, WebRequest request) {
-        return internalServerError("An internal server error occurred", request);
+        UUID traceId = stackTraceExceptionService.saveException(ex);
+        return internalServerError("An internal server error occurred", request, traceId);
     }
 }

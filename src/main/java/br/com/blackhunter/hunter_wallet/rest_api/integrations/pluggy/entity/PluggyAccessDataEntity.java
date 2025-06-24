@@ -12,6 +12,7 @@ package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.entity;
 import jakarta.persistence.*;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -25,9 +26,12 @@ public class PluggyAccessDataEntity {
     @Column(name = "access_token", unique = true)
     private String accessToken;
 
+    private LocalDateTime obtainedAt;
+
     public PluggyAccessDataEntity() { }
 
     public PluggyAccessDataEntity(String accessToken) {
         this.accessToken = accessToken;
+        this.obtainedAt = LocalDateTime.now();
     }
 }

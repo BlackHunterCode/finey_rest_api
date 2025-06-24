@@ -9,6 +9,8 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator;
 
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
+
 public interface FinancialIntegrator {
-    boolean connect();
+    IntegrationConnectStatus connect();
 }

@@ -16,6 +16,6 @@ import org.springframework.data.jpa.repository.Query;
 import java.util.UUID;
 
 public interface PluggyAccessDataRepository extends JpaRepository<PluggyAccessDataEntity, UUID> {
-    @Query("SELECT COUNT(*) > 0 FROM UserAccountEntity u")
+    @Query("SELECT COUNT(*) > 0 FROM PluggyAccessDataEntity pa")
     boolean alreadyHasRegistration();
 }

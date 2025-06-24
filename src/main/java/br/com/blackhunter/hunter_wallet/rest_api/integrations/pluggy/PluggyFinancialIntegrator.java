@@ -10,16 +10,26 @@
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy;
 
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegrator;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.service.PluggyAccessService;
+
+import java.time.LocalDateTime;
 
 public class PluggyFinancialIntegrator implements FinancialIntegrator {
+    private final PluggyAccessService pluggyAccessService;
 
+    public PluggyFinancialIntegrator(PluggyAccessService pluggyAccessService) {
+        this.pluggyAccessService = pluggyAccessService;
+    }
     @Override
-    public boolean connect() {
+    public IntegrationConnectStatus connect() {
+        String tokenEncrypted = pluggyAccessService.getAndSaveAccessTokenEncryptedIfNecessary();
+        String connectTokenEncrypted = pluggyAccessService.getConnectTokenEncrypted(tokenEncrypted);
 
-        // pede credenciais para o usuário.
-        // verificar se precisa revogar o token
-        // se sim, revoga.
-        // se nao prossegue com o
-        return false;
+        return new IntegrationConnectStatus(
+                "bank connection token created successfully.",
+                connectTokenEncrypted,
+                LocalDateTime.now().plusMinutes(25)
+        );
     }
 }

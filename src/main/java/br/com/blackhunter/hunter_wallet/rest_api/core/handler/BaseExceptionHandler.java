@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.context.request.WebRequest;
 
+import java.util.UUID;
+
 /**
  * <p>Classe <code>BaseExceptionHandler</code>.</p>
  * <p>Classe abstrata base para tratamento de exceções da aplicação.</p>
@@ -32,8 +34,8 @@ public abstract class BaseExceptionHandler {
      * @param request Requisição web
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    protected ResponseEntity<ApiResponse<String>> badRequest(String message, WebRequest request) {
-        return buildErrorResponse(message, HttpStatus.BAD_REQUEST);
+    protected ResponseEntity<ApiResponse<String>> badRequest(String message, WebRequest request, UUID traceId) {
+        return buildErrorResponse(message, HttpStatus.BAD_REQUEST, traceId);
     }
 
     /**
@@ -43,8 +45,8 @@ public abstract class BaseExceptionHandler {
      * @param request Requisição web
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    protected ResponseEntity<ApiResponse<String>> notFound(String message, WebRequest request) {
-        return buildErrorResponse(message, HttpStatus.NOT_FOUND);
+    protected ResponseEntity<ApiResponse<String>> notFound(String message, WebRequest request, UUID traceId) {
+        return buildErrorResponse(message, HttpStatus.NOT_FOUND, traceId);
     }
 
     /**
@@ -54,8 +56,8 @@ public abstract class BaseExceptionHandler {
      * @param request Requisição web
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    protected ResponseEntity<ApiResponse<String>> unauthorized(String message, WebRequest request) {
-        return buildErrorResponse(message, HttpStatus.UNAUTHORIZED);
+    protected ResponseEntity<ApiResponse<String>> unauthorized(String message, WebRequest request,  UUID traceId) {
+        return buildErrorResponse(message, HttpStatus.UNAUTHORIZED, traceId);
     }
 
     /**
@@ -65,8 +67,8 @@ public abstract class BaseExceptionHandler {
      * @param request Requisição web
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    protected ResponseEntity<ApiResponse<String>> forbidden(String message, WebRequest request) {
-        return buildErrorResponse(message, HttpStatus.FORBIDDEN);
+    protected ResponseEntity<ApiResponse<String>> forbidden(String message, WebRequest request,  UUID traceId) {
+        return buildErrorResponse(message, HttpStatus.FORBIDDEN, traceId);
     }
 
     /**
@@ -76,8 +78,8 @@ public abstract class BaseExceptionHandler {
      * @param request Requisição web
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    protected ResponseEntity<ApiResponse<String>> internalServerError(String message, WebRequest request) {
-        return buildErrorResponse(message, HttpStatus.INTERNAL_SERVER_ERROR);
+    protected ResponseEntity<ApiResponse<String>> internalServerError(String message, WebRequest request,  UUID traceId) {
+        return buildErrorResponse(message, HttpStatus.INTERNAL_SERVER_ERROR, traceId);
     }
 
     /**
@@ -87,9 +89,9 @@ public abstract class BaseExceptionHandler {
      * @param status Status HTTP
      * @return ResponseEntity com ApiResponse contendo detalhes do erro
      */
-    private ResponseEntity<ApiResponse<String>> buildErrorResponse(String message, HttpStatus status) {
+    private ResponseEntity<ApiResponse<String>> buildErrorResponse(String message, HttpStatus status, UUID traceId) {
         String statusType = getStatusType(status);
-        ApiResponse<String> apiResponse = new ApiResponse<>(statusType, status.value(), message);
+        ApiResponse<String> apiResponse = new ApiResponse<>(statusType, status.value(), message, traceId);
         return new ResponseEntity<>(apiResponse, status);
     }
 

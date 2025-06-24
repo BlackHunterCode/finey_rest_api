@@ -17,6 +17,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.UUID;
+
 /**
  * Classe <code>ApiResponse</code>
  * <p>Classe genérica que padroniza as respostas da API.</p>
@@ -28,7 +30,6 @@ import lombok.NoArgsConstructor;
  * @since 2025
  */
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
 public class ApiResponse<T> {
     /**
@@ -45,4 +46,20 @@ public class ApiResponse<T> {
      * Dados da resposta, pode ser qualquer tipo de objeto
      */
     private T data;
+
+    private UUID traceId;
+
+    public ApiResponse(String status, int statusCode, T data) {
+        this.status = status;
+        this.statusCode = statusCode;
+        this.data = data;
+        this.traceId = null;
+    }
+
+    public ApiResponse(String status, int statusCode, T data, UUID traceId) {
+        this.status = status;
+        this.statusCode = statusCode;
+        this.data = data;
+        this.traceId = traceId;
+    }
 }

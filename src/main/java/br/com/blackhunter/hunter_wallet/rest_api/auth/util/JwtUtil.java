@@ -9,15 +9,16 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.auth.util;
 
-import br.com.blackhunter.hunter_wallet.rest_api.core.dto.HttpContextData;
-import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
-import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.UserAccountService;
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
+
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.stereotype.Component;
 
-import java.util.UUID;
+import br.com.blackhunter.hunter_wallet.rest_api.core.dto.HttpContextData;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.UserAccountService;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Component
 public class JwtUtil {
@@ -45,6 +46,14 @@ public class JwtUtil {
         HttpServletRequest request = HttpContextData.getCurrentRequest();
         String authHeader = request.getHeader("Authorization");
         return authHeader.replace("Bearer token ", "");
+    }
+
+    public boolean isExpired(String token) {
+        if (token == null || token.isEmpty()) {
+            throw new IllegalArgumentException("Token is missing or empty");
+        }
+        Jwt decodedJwt = jwtDecoder.decode(token);
+        return decodedJwt.getExpiresAt().isBefore(java.time.Instant.now());
     }
 
     private UUID extractUserIdFromToken(String token) {
