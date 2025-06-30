@@ -20,7 +20,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * 2025 Black Hunter - Todos os Direitos Reservados.

@@ -9,11 +9,12 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy;
 
+import java.time.LocalDateTime;
+
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegrator;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.enums.FinancialIntegrationPlatform;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.service.PluggyAccessService;
-
-import java.time.LocalDateTime;
 
 public class PluggyFinancialIntegrator implements FinancialIntegrator {
     private final PluggyAccessService pluggyAccessService;
@@ -23,12 +24,15 @@ public class PluggyFinancialIntegrator implements FinancialIntegrator {
     }
     @Override
     public IntegrationConnectStatus connect() {
+        System.out.println("Connect method called");
         String tokenEncrypted = pluggyAccessService.getAndSaveAccessTokenEncryptedIfNecessary();
+        System.out.println("Token Encrypted: " + tokenEncrypted);
         String connectTokenEncrypted = pluggyAccessService.getConnectTokenEncrypted(tokenEncrypted);
 
         return new IntegrationConnectStatus(
                 "bank connection token created successfully.",
                 connectTokenEncrypted,
+                FinancialIntegrationPlatform.PLUGGY,
                 LocalDateTime.now().plusMinutes(25)
         );
     }

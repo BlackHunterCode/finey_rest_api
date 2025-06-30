@@ -81,9 +81,6 @@ public class PluggyWebClient {
             }
 
             String url = PLUGGY_API_BASE_URL + "/connect_token";
-            
-            // Clean up the token
-            token = token.trim().replaceAll("^\"|\"$", "");
         
             HttpHeaders headers = this.createHeaders();
             headers.set("X-API-KEY", token);

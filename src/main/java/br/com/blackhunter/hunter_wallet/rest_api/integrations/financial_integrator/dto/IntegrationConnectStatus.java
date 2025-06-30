@@ -9,6 +9,7 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto;
 
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.enums.FinancialIntegrationPlatform;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,5 +22,6 @@ import java.time.LocalDateTime;
 public class IntegrationConnectStatus {
     private String message;
     private String dataAccess;
+    private FinancialIntegrationPlatform platform;
     private LocalDateTime expiredAt;
 }

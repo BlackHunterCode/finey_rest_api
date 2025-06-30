@@ -1,5 +1,6 @@
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.controller;
 
+import br.com.blackhunter.hunter_wallet.rest_api.core.dto.ApiResponse;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.service.FinancialIntegratorService;
 import org.springframework.http.HttpStatus;
@@ -18,7 +19,12 @@ public class FinancialIntegratorController {
     }
 
     @PostMapping("/connect")
-    public ResponseEntity<IntegrationConnectStatus> connect() {
-        return ResponseEntity.status(HttpStatus.CREATED).body(financialIntegratorService.connect());
+    public ResponseEntity<ApiResponse<IntegrationConnectStatus>> connect() {
+        return ResponseEntity.status(HttpStatus.CREATED).body(
+                new ApiResponse<>(
+                        "success",
+                        HttpStatus.CREATED.value(),
+                        financialIntegratorService.connect()
+                ));
     }
 }

@@ -9,21 +9,23 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.service.impl;
 
+import java.time.LocalDateTime;
+import java.util.Objects;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+
 import br.com.blackhunter.hunter_wallet.rest_api.auth.util.CryptUtil;
-import br.com.blackhunter.hunter_wallet.rest_api.auth.util.JwtUtil;
 import br.com.blackhunter.hunter_wallet.rest_api.client.PluggyWebClient;
 import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.entity.PluggyAccessDataEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.repository.PluggyAccessDataRepository;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.service.PluggyAccessService;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class PluggyAccessServiceImpl implements PluggyAccessService {
     @Value("${hunter.secrets.pluggy.client-id}")
     private String PLUGGY_CLIENT_ID;
@@ -34,16 +36,13 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
 
     private final PluggyWebClient pluggyWebClient;
     private final PluggyAccessDataRepository pluggyAccessDataRepository;
-    private final JwtUtil jwtUtil;
 
     public PluggyAccessServiceImpl(
             PluggyWebClient pluggyWebClient,
-            PluggyAccessDataRepository pluggyAccessDataRepository,
-            JwtUtil jwtUtil
+            PluggyAccessDataRepository pluggyAccessDataRepository
     ) {
         this.pluggyWebClient = pluggyWebClient;
         this.pluggyAccessDataRepository = pluggyAccessDataRepository;
-        this.jwtUtil = jwtUtil;
     }
 
     /**
@@ -58,12 +57,13 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
     @Cacheable(key = "'pluggyAccessToken'", value = "accessToken")
     public String getAndSaveAccessTokenEncryptedIfNecessary() {
         String accessToken = null;
-        if(!isTokenExistsOrIsTokenExpired()) {
+        System.out.println("Condicao: " + isTokenNotExistsOrIsTokenExpired());
+        log.info("Condicao: {}", isTokenNotExistsOrIsTokenExpired());
+        if(isTokenNotExistsOrIsTokenExpired()) {
             try {
-                accessToken = CryptUtil.encrypt(
-                         pluggyWebClient.getAccessToken(PLUGGY_CLIENT_ID, PLUGGY_CLIENT_SECRET),
-                        PLUGGY_CRYPT_SECRET
-                );
+                String rawtoken = pluggyWebClient.getAccessToken(PLUGGY_CLIENT_ID, PLUGGY_CLIENT_SECRET);
+                accessToken = CryptUtil.encrypt(rawtoken, PLUGGY_CRYPT_SECRET);
+                pluggyAccessDataRepository.deleteAll(); // limpo a tabela novamente.
                 pluggyAccessDataRepository.save(new PluggyAccessDataEntity(accessToken));
             }
             catch (Exception e) {
@@ -71,6 +71,7 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
             }
         }
         else accessToken = Objects.requireNonNull(getAccessTokenEncrypted()).getAccessToken();
+
         return accessToken;
     }
 
@@ -96,7 +97,6 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
             }
     
             String accessToken = CryptUtil.decrypt(token, PLUGGY_CRYPT_SECRET);
-            System.out.println("Access token: " + accessToken);
             String connectToken = pluggyWebClient.getConnectToken(accessToken);
             if (connectToken == null || connectToken.isEmpty()) {
                 throw new IllegalStateException("Received empty connect token from Pluggy API");
@@ -117,9 +117,9 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
         return accessData != null ? accessData : null;
     }
 
-    private boolean isTokenExistsOrIsTokenExpired() {
+    private boolean isTokenNotExistsOrIsTokenExpired() {
         try {
-            return pluggyAccessDataRepository.alreadyHasRegistration() && !isTokenExpired(getAccessTokenEncrypted());
+            return !pluggyAccessDataRepository.alreadyHasRegistration() || isTokenExpired(getAccessTokenEncrypted());
         } catch (Exception e) {
             throw new BusinessException("Error verifying access token: " + e.getMessage());
         }
@@ -130,7 +130,7 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
             return true;
         }
 
-        LocalDateTime tokenExpirationTime = accessData.getObtainedAt().plusMinutes(25);
+        LocalDateTime tokenExpirationTime = accessData.getObtainedAt().plusHours(1).plusMinutes(30);
         return tokenExpirationTime.isBefore(LocalDateTime.now());
     }
 }
