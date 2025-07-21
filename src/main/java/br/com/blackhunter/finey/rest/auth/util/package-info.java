@@ -1,0 +1,1 @@
+package br.com.blackhunter.finey.rest.auth.util;

@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>br.com.blackhunter.hunter-wallet</groupId>
-	<artifactId>rest-api</artifactId>
+	<artifactId>finey-rest-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>rest-api</name>
-	<description>Backoffice - REST full API for Hunter Wallet product</description>
+	<name>finey-rest-api</name>
+	<description>Backoffice - REST full API for Finey product</description>
 	<url/>
 	<licenses>
 		<license/>
