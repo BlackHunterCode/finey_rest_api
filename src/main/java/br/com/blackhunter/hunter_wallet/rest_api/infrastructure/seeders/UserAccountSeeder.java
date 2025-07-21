@@ -19,7 +19,6 @@ import br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository.UserAcco
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.UserAccountService;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.UserProfileService;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -27,19 +26,16 @@ import java.time.LocalDate;
 @Component
 @Slf4j
 public class UserAccountSeeder implements DomainSeeder {
-    private final PasswordEncoder passwordEncoder;
     private final UserAccountRepository accountRepository;
     private final UserAccountService accountService;
     private final UserProfileService profileService;
 
 
     public UserAccountSeeder(
-            PasswordEncoder passwordEncoder,
             UserAccountRepository accountRepository,
             UserAccountService accountService,
             UserProfileService profileService
         ) {
-        this.passwordEncoder = passwordEncoder;
         this.accountRepository = accountRepository;
         this.accountService = accountService;
         this.profileService = profileService;

@@ -50,4 +50,31 @@ public class CryptUtil {
         // Converte de volta para string
         return new String(decryptedBytes, StandardCharsets.UTF_8);
     }
+    
+    /**
+     * Verifica se uma string está criptografada usando o algoritmo AES implementado nesta classe.
+     * 
+     * @param text String a ser verificada
+     * @param secretKey Chave secreta usada para tentar descriptografar
+     * @return true se a string foi criptografada com o método encrypt() desta classe, false caso contrário
+     */
+    public static boolean isEncrypted(String text, String secretKey) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // Tenta descriptografar o texto
+            String decrypted = decrypt(text, secretKey);
+            
+            // Se chegou até aqui sem lançar exceção, o texto estava criptografado
+            // com o algoritmo AES e a chave fornecida
+            return true;
+        } catch (Exception e) {
+            // Se ocorrer qualquer exceção durante a descriptografia,
+            // o texto não está criptografado com o algoritmo AES desta classe
+            // ou a chave está incorreta
+            return false;
+        }
+    }
 }

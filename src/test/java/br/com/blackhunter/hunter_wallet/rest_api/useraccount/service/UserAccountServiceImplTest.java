@@ -9,6 +9,8 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.service;
 
+import br.com.blackhunter.hunter_wallet.rest_api.auth.util.JwtUtil;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegratorManager;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
@@ -55,6 +57,9 @@ public class UserAccountServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private JwtUtil jwtUtil;
 
     private UserAccountServiceImpl userAccountServiceImpl;
 

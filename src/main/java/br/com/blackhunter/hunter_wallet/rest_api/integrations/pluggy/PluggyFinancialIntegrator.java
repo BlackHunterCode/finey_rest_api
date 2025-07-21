@@ -10,6 +10,8 @@
 package br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegrator;
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
@@ -35,5 +37,10 @@ public class PluggyFinancialIntegrator implements FinancialIntegrator {
                 FinancialIntegrationPlatform.PLUGGY,
                 LocalDateTime.now().plusMinutes(25)
         );
+    }
+
+    @Override
+    public List<String> getAllConnectedBanks(UUID userId) {
+        return pluggyAccessService.getAllItemsByUserId(userId);
     }
 }

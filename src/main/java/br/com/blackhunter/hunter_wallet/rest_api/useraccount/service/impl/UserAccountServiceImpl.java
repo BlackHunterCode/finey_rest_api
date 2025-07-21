@@ -6,7 +6,12 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.impl;
 
+import br.com.blackhunter.hunter_wallet.rest_api.auth.util.JwtUtil;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegrator;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.FinancialIntegratorManager;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.projections.UserInfoData;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.projections.UserInfoDataProjected;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.mapper.UserAccountMapper;
@@ -15,10 +20,13 @@ import br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository.UserAcco
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.service.UserAccountService;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.validation.UserAccountValidator;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -31,6 +39,14 @@ public class UserAccountServiceImpl implements UserAccountService {
     private final UserAccountMapper mapper;
     private final UserAccountRepository repository;
     private final PasswordEncoder passwordEncoder;
+
+    @Lazy
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Lazy
+    @Autowired
+    private FinancialIntegratorManager financialIntegratorManager;
 
     /**
      * Injeção de dependências:
@@ -64,8 +80,9 @@ public class UserAccountServiceImpl implements UserAccountService {
         entity.setUpdatedAt(LocalDateTime.now());
         entity.setAccountStatus(UserAccountStatus.ACTIVE);
         // por enquanto nao existe validação para garantir que a senha ja vem criptografada
-        // ent ao, vamos criptografar a senha aqui fixa por enquanto
+        // entao, vamos criptografar a senha aqui fixa por enquanto
         entity.setPasswordHash(passwordEncoder.encode(reqPayload.getHashedPassword()));
+        entity.setEndDateTimeOfTutorialPeriod(entity.getCreatedAt().plusDays(3)); // 3 dias de tutorial
         return mapper.toData(repository.save(entity));
     }
 
@@ -73,6 +90,15 @@ public class UserAccountServiceImpl implements UserAccountService {
     public UserAccountData authenticateUser(Object loginDTO) {
         // Fazer depois..
         return null;
+    }
+
+    @Override
+    public UserInfoDataProjected getUserInfoByAuthToken() {
+        UserAccountEntity user = jwtUtil.getUserAccountFromToken();
+
+        FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
+        List<String> userConnectedBanks = financialIntegrator.getAllConnectedBanks(user.getAccountId());
+        return new UserInfoDataProjected(repository.getUserInfoById(user.getAccountId()), userConnectedBanks);
     }
 
     @Override
@@ -111,5 +137,9 @@ public class UserAccountServiceImpl implements UserAccountService {
     @Override
     public void deactivateAccount(UUID userId) {
         // Fazer...
+    }
+
+    private boolean isAccountExists(UUID userId) {
+        return repository.existsById(userId);
     }
 }

@@ -118,9 +118,15 @@ public class AuthenticationService {
                 null,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
         );
-        
+
         // Gera o token JWT
-        return jwtService.generateToken(authentication);
+        String token = jwtService.generateToken(authentication);
+
+        // Atualiza o último login do usuário
+        userAccount.setLastLoginAt(java.time.LocalDateTime.now());
+        userAccountRepository.save(userAccount);
+
+        return token;
     }
 
     /**

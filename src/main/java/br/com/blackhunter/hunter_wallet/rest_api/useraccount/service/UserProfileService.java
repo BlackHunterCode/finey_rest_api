@@ -5,7 +5,6 @@ import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountE
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserProfileEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload.UserProfilePayload;
 
-import java.util.Optional;
 import java.util.UUID;
 
 public interface UserProfileService {

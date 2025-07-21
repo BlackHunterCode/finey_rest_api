@@ -11,6 +11,10 @@ package br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integra
 
 import br.com.blackhunter.hunter_wallet.rest_api.integrations.financial_integrator.dto.IntegrationConnectStatus;
 
+import java.util.List;
+import java.util.UUID;
+
 public interface FinancialIntegrator {
     IntegrationConnectStatus connect();
+    List<String> getAllConnectedBanks(UUID userId);
 }

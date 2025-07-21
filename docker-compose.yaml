@@ -18,9 +18,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     container_name: hw_api_container
     ports:
       - "8080:8080"
+      #- "0.0.0.0:8080:8080"
     env_file:
       - .env
     depends_on:

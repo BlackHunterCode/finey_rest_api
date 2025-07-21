@@ -31,9 +31,13 @@ public class UserProfileEntity {
     @JoinColumn(name = "user_account_id", nullable = false)
     private UserAccountEntity userAccount;
 
+    @Column(nullable = false, length = 80)
     private String firstName;
+    @Column(nullable = false, length = 80)
     private String lastName;
+    @Column(nullable = false, length = 20)
     private String phoneNumber;
+    @Column(nullable = false)
     private LocalDate birthDate;
     @Lob
     private byte[] profilePictureFile;

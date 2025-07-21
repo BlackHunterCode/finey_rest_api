@@ -9,6 +9,7 @@
 
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository;
 
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.projections.UserInfoData;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -39,8 +40,6 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
     /**
      * @param email E-mail do usuário a ser excluído
      * <p>Remove a conta de usuário com o e-mail especificado.</p>
-     * 
-     * @return Número de registros excluídos
      * */
     void deleteByEmail(String email);
 
@@ -52,4 +51,22 @@ public interface UserAccountRepository extends JpaRepository<UserAccountEntity, 
      */
     @Query("SELECT u.accountId FROM UserAccountEntity u WHERE u.email = :email")
     Optional<UUID> findUserIdByEmail(@Param(value = "email") String email);
+
+    /**
+     * @param userId ID do usuário a ser buscado
+     * <p>Busca informações gerais do usuário.</p>
+     *
+     * @return Dados gerais do usuário.
+     * */
+    @Query(
+            "SELECT ua.accountId as accountId,                                          " +
+            "       CONCAT(up.firstName, ' ', up.lastName) as fullName,                 " +
+            "       up.firstName as firstName, up.lastName as lastName,                 " +
+            "       ua.endDateTimeOfTutorialPeriod as endDateTimeOfTutorialPeriod,      " +
+            "       ua.accountStatus as accountStatus                                   " +
+            "FROM UserAccountEntity ua                                                  " +
+            "INNER JOIN UserProfileEntity up ON ua.accountId = up.userAccount.accountId " +
+            "WHERE ua.accountId = :userId"
+    )
+    UserInfoData getUserInfoById(@Param("userId") UUID userId);
 }

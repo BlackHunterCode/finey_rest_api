@@ -10,10 +10,10 @@
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.service;
 
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserAccountData;
-import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.UserProfileData;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.projections.UserInfoData;
+import br.com.blackhunter.hunter_wallet.rest_api.useraccount.dto.projections.UserInfoDataProjected;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity.UserAccountEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload.UserAccountPayload;
-import br.com.blackhunter.hunter_wallet.rest_api.useraccount.payload.UserProfilePayload;
 
 import java.util.UUID;
 
@@ -21,6 +21,7 @@ public interface UserAccountService {
     /* Serviços expostos como endpoints */
     UserAccountData registerUser(UserAccountPayload reqPayload);
     UserAccountData authenticateUser(Object loginDTO);
+    UserInfoDataProjected getUserInfoByAuthToken();
 
     /* Não expostos como endpoint (usados internamente) */
     UserAccountData findById(UUID userId);

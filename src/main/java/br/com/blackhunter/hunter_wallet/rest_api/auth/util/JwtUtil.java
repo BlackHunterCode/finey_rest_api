@@ -45,7 +45,11 @@ public class JwtUtil {
     public String extractAuthorizationTokenFromRequest() {
         HttpServletRequest request = HttpContextData.getCurrentRequest();
         String authHeader = request.getHeader("Authorization");
-        return authHeader.replace("Bearer token ", "");
+        if (authHeader == null || authHeader.isEmpty()) {
+            throw new IllegalArgumentException("Authorization header is missing or empty");
+        }
+        // Standard Bearer token format is "Bearer [token]"
+        return authHeader.replace("Bearer ", "");
     }
 
     public boolean isExpired(String token) {

@@ -10,6 +10,7 @@
 package br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity;
 
 import br.com.blackhunter.hunter_wallet.rest_api.finance.transaction.entity.TransactionEntity;
+import br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.entity.PluggyItemEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.useraccount.enums.UserAccountStatus;
 import jakarta.persistence.*;
 import lombok.Data;
@@ -46,12 +47,17 @@ public class UserAccountEntity {
     private boolean emailVerified;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime endDateTimeOfTutorialPeriod;
+    private LocalDateTime lastLoginAt;
 
     @OneToOne(mappedBy = "userAccount", cascade = CascadeType.ALL)
     private UserProfileEntity userProfile;
 
     @OneToMany(mappedBy = "userAccount", cascade = CascadeType.ALL)
     private Set<TransactionEntity> transactions;
+
+    @OneToMany(mappedBy = "userAccount", cascade = CascadeType.ALL)
+    private Set<PluggyItemEntity> pluggyItems;
 
     /**
      * Construtor padrão da classe.
