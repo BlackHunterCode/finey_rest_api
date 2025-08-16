@@ -11,11 +11,13 @@ package br.com.blackhunter.finey.rest.finance.transaction.entity;
 
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionStatus;
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionType;
+import br.com.blackhunter.finey.rest.integrations.pluggy.entity.PluggyAccountDataEntity;
 import br.com.blackhunter.finey.rest.useraccount.entity.UserAccountEntity;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -27,12 +29,14 @@ public class TransactionEntity {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "transaction_id", nullable = false, updatable = false)
     private UUID transactionId;
-    @Column(name = "open_banking_account_id", nullable = false, updatable = false)
-    private UUID openBankingAccountId;
 
     @ManyToOne
-    @JoinColumn(name = "user_account_id", updatable = false)
+    @JoinColumn(name = "user_account_id", updatable = false, nullable = false)
     private UserAccountEntity userAccount;
+
+    @ManyToOne
+    @JoinColumn(name = "pluggy_account_id", nullable = false, updatable = false)
+    private PluggyAccountDataEntity pluggyAccountId;
 
     @Column(nullable = false)
     private BigDecimal amount;
@@ -66,6 +70,9 @@ public class TransactionEntity {
 
     @Column(name = "transaction_date", nullable = false, updatable = false)
     private LocalDateTime transactionDate;
+
+    @Column(name = "transaction_local_date", nullable = false, updatable = false)
+    private LocalDate transactionLocalDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

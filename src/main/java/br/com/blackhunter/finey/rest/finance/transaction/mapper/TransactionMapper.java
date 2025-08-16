@@ -25,7 +25,6 @@ public interface TransactionMapper {
     TransactionMapper INSTANCE = Mappers.getMapper(TransactionMapper.class);
 
     @Mapping(target = "transactionId", ignore = true)
-    @Mapping(target = "openBankingAccountId", ignore = true)
     @Mapping(target = "userAccount", ignore = true)
     @Mapping(target = "providerTransactionCode", ignore = true)
     @Mapping(target = "providerTransactionId", ignore = true)
@@ -52,4 +51,6 @@ public interface TransactionMapper {
     @Mapping(target = "status", source = "status")
     @Mapping(target = "transactionDate", source = "transactionDate")
     TransactionData toData(TransactionEntity entity);
+
+
 }

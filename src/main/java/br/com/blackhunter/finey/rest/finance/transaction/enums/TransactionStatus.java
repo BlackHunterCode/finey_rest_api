@@ -11,5 +11,6 @@ package br.com.blackhunter.finey.rest.finance.transaction.enums;
 
 public enum TransactionStatus {
     PENDING,
-    POSTED
+    POSTED,
+    UNKNOWN,
 }

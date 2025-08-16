@@ -9,6 +9,7 @@ package br.com.blackhunter.finey.rest.useraccount.service.impl;
 import br.com.blackhunter.finey.rest.auth.util.JwtUtil;
 import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegrator;
 import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegratorManager;
+import br.com.blackhunter.finey.rest.integrations.financial_integrator.dto.FinancialInstitutionData;
 import br.com.blackhunter.finey.rest.useraccount.dto.UserAccountData;
 import br.com.blackhunter.finey.rest.useraccount.dto.projections.UserInfoDataProjected;
 import br.com.blackhunter.finey.rest.useraccount.entity.UserAccountEntity;
@@ -96,7 +97,7 @@ public class UserAccountServiceImpl implements UserAccountService {
         UserAccountEntity user = jwtUtil.getUserAccountFromToken();
 
         FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-        List<String> userConnectedBanks = financialIntegrator.getAllConnectedBanks(user.getAccountId());
+        List<FinancialInstitutionData> userConnectedBanks = financialIntegrator.getAllConnectedBanks(user.getAccountId());
         return new UserInfoDataProjected(repository.getUserInfoById(user.getAccountId()), userConnectedBanks);
     }
 

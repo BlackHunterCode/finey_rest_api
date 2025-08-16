@@ -1,2 +1,2 @@
-# hw_rest_api
-Backoffice - REST full API for Hunter Wallet product
+# Finey Rest
+Backoffice - REST full API for Finey product

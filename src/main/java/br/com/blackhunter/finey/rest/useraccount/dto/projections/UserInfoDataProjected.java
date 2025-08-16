@@ -1,5 +1,6 @@
 package br.com.blackhunter.finey.rest.useraccount.dto.projections;
 
+import br.com.blackhunter.finey.rest.integrations.financial_integrator.dto.FinancialInstitutionData;
 import br.com.blackhunter.finey.rest.useraccount.enums.UserAccountStatus;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,9 +20,9 @@ public class UserInfoDataProjected {
     private String lastName;
     private LocalDateTime endDateTimeOfTutorialPeriod;
     private UserAccountStatus accountStatus;
-    private List<String> connectedBanks;
+    private List<FinancialInstitutionData> connectedBanks;
 
-    public UserInfoDataProjected(UserInfoData userInfoData, List<String> connectedBanks) {
+    public UserInfoDataProjected(UserInfoData userInfoData, List<FinancialInstitutionData> connectedBanks) {
         this.accountId = userInfoData.getAccountId();
         this.fullName = userInfoData.getFullName();
         this.firstName = userInfoData.getFirstName();

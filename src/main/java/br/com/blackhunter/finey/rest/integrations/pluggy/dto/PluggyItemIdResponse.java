@@ -1,5 +1,6 @@
 package br.com.blackhunter.finey.rest.integrations.pluggy.dto;
 
+import java.util.List;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;

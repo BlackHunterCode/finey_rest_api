@@ -32,19 +32,19 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @EnableTransactionManagement
 @EnableJpaRepositories(
     basePackages = {
-        "br.com.blackhunter.hunter_wallet.rest_api.core.trace.repository",
-        "br.com.blackhunter.hunter_wallet.rest_api.useraccount.repository",
-        "br.com.blackhunter.hunter_wallet.rest_api.finance.transaction.repository",
-        "br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.repository"
+        "br.com.blackhunter.finey.rest.core.trace.repository",
+        "br.com.blackhunter.finey.rest.useraccount.repository",
+        "br.com.blackhunter.finey.rest.finance.transaction.repository",
+        "br.com.blackhunter.finey.rest.integrations.pluggy.repository"
     },
     transactionManagerRef = "errorLoggingTransactionManager"
 )
 @EntityScan(
     basePackages = {
-        "br.com.blackhunter.hunter_wallet.rest_api.core.trace.entity",
-        "br.com.blackhunter.hunter_wallet.rest_api.useraccount.entity",
-        "br.com.blackhunter.hunter_wallet.rest_api.finance.transaction.entity",
-        "br.com.blackhunter.hunter_wallet.rest_api.integrations.pluggy.entity"
+        "br.com.blackhunter.finey.rest.core.trace.entity",
+        "br.com.blackhunter.finey.rest.useraccount.entity",
+        "br.com.blackhunter.finey.rest.finance.transaction.entity",
+        "br.com.blackhunter.finey.rest.integrations.pluggy.entity"
     }
 )
 public class ErrorLoggingConfig {

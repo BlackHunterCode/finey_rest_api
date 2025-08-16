@@ -9,12 +9,17 @@
 
 package br.com.blackhunter.finey.rest.integrations.pluggy.service.impl;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
+import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
+import br.com.blackhunter.finey.rest.integrations.financial_integrator.dto.FinancialInstitutionData;
+import br.com.blackhunter.finey.rest.integrations.pluggy.dto.PluggyAccountIds;
+import br.com.blackhunter.finey.rest.integrations.pluggy.entity.PluggyAccountDataEntity;
+import br.com.blackhunter.finey.rest.integrations.pluggy.repository.PluggyAccountDataRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -46,17 +51,20 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
     private final PluggyWebClient pluggyWebClient;
     private final PluggyAccessDataRepository pluggyAccessDataRepository;
     private final PluggyItemRepository pluggyItemRepository;
+    private final PluggyAccountDataRepository pluggyAccountDataRepository;
 
     public PluggyAccessServiceImpl(
             JwtUtil jwtUtil,
             PluggyWebClient pluggyWebClient,
             PluggyAccessDataRepository pluggyAccessDataRepository,
-            PluggyItemRepository pluggyItemRepository
+            PluggyItemRepository pluggyItemRepository,
+            PluggyAccountDataRepository pluggyAccountDataRepository
     ) {
         this.jwtUtil = jwtUtil;
         this.pluggyWebClient = pluggyWebClient;
         this.pluggyAccessDataRepository = pluggyAccessDataRepository;
         this.pluggyItemRepository = pluggyItemRepository;
+        this.pluggyAccountDataRepository = pluggyAccountDataRepository;
     }
 
     /**
@@ -124,6 +132,7 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
     }
 
     @Override
+    @Transactional(rollbackOn = {BusinessException.class, Exception.class})
     public PluggyItemIdResponse savePluggyItemId(PluggyItemIdPayload payload) {
         try {
             UserAccountEntity user = jwtUtil.getUserAccountFromToken();
@@ -144,20 +153,104 @@ public class PluggyAccessServiceImpl implements PluggyAccessService {
             if(optionalPluggyItemEntity.isPresent()) {
                 itemToSave = optionalPluggyItemEntity.get();
                 itemToSave.setOriginalPluggyItemId(payload.getItemId());
+
+                // limpa todas as contas que estão associadas a esse item, para atualizar novamente
+                pluggyAccountDataRepository.deleteAllByOriginalPluggyItemId(CryptUtil.decrypt(payload.getItemId(), PLUGGY_CRYPT_SECRET));
             }
 
-            return new PluggyItemIdResponse(pluggyItemRepository.save(itemToSave).getItemId());
+            PluggyItemEntity itemSaved = pluggyItemRepository.save(itemToSave);
+
+            // hora de buscar os ids das contas
+            List<PluggyAccountDataEntity> accountIds = new ArrayList<>();
+
+            for(PluggyWebClient.PluggyAccount ac : pluggyWebClient.getAccountIdsByItemId(CryptUtil.decrypt(payload.getItemId(), PLUGGY_CRYPT_SECRET), CryptUtil.decrypt(getAndSaveAccessTokenEncryptedIfNecessary(), PLUGGY_CRYPT_SECRET))) {
+                PluggyAccountDataEntity pad = new PluggyAccountDataEntity(
+                        null,
+                        itemToSave,
+                        Set.of(),
+                        CryptUtil.encrypt(ac.getId(), PLUGGY_CRYPT_SECRET),
+                        CryptUtil.encrypt(ac.getName(), PLUGGY_CRYPT_SECRET),
+                        CryptUtil.encrypt(ac.getType(), PLUGGY_CRYPT_SECRET),
+                        CryptUtil.encrypt(String.valueOf(BigDecimal.valueOf(ac.getBalance())), PLUGGY_CRYPT_SECRET ),
+                        LocalDateTime.now()
+                );
+                accountIds.add(pad);
+            }
+
+            // salva as contas associadas ao item
+            if(accountIds.isEmpty()) {
+                // lanço um erro porque não deveria acontecer de não ter contas associadas ao item.
+                // o rollback vai acontecer automaticamente.
+                throw new BusinessException("No accounts found for the provided item ID.");
+            }
+
+            System.out.println("Saving accounts: " + accountIds);
+            pluggyAccountDataRepository.saveAll(accountIds);
+
+            return new PluggyItemIdResponse(itemSaved.getItemId());
         } catch (Exception e) {
             throw new BusinessException("Error getting Pluggy item ID: " + e.getMessage());
         }
     }
 
     @Override
-    public List<String> getAllItemsByUserId(UUID userId) {
+    public List<FinancialInstitutionData> getAllItemsByUserId(UUID userId) {
         return pluggyItemRepository.findAllItemsByUserId(userId)
-                .stream()
-                .map(UUID::toString)
-                .toList();
+            .stream()
+            .map(item -> {
+                try {
+                    return new FinancialInstitutionData(
+                            item.getItemId().toString(),
+                            item.getName(),
+                            item.getImageUrl(),
+                            pluggyAccountDataRepository.findAllByItemId(item.getItemId())
+                                    .stream().map(pa -> {
+                                        try {
+                                            return PluggyAccountIds.fromEntity(pa, PLUGGY_CRYPT_SECRET);
+                                        } catch (Exception e) {
+                                            throw new BusinessException(e.getMessage());
+                                        }
+                                    }).toList()
+                    );
+                } catch (Exception e) {
+                    throw new BusinessException(e.getMessage());
+                }
+            })
+            .toList();
+    }
+
+    @Override
+    public String getOriginalPluggyAccountIdByEntityId(UUID entityId) {
+        return pluggyAccountDataRepository.findById(entityId)
+                .map(PluggyAccountDataEntity::getPluggyOriginalAccountId)
+                .orElseThrow(() -> new BusinessException("Pluggy account not found for entity ID: " + entityId));
+    }
+
+    /**
+     * Esse método busca as transações de um período específico DIRETO da API da pluggy.
+     * */
+    @Override
+    public List<TransactionEntity> getAllTransactionsPeriodByOriginalAccountId(final String originalAccountId, final LocalDate startDate, final LocalDate endDate) {
+        UserAccountEntity user = jwtUtil.getUserAccountFromToken();
+        PluggyAccountDataEntity pluggyAccountData = pluggyAccountDataRepository.findByPluggyOriginalAccountId(originalAccountId)
+                .orElseThrow(() -> new BusinessException("Pluggy account not found for original account ID: " + originalAccountId));
+
+        try {
+            return pluggyWebClient.getAllTransactionsPeriodByOriginalAccountId(
+                    CryptUtil.decrypt(getAndSaveAccessTokenEncryptedIfNecessary(), PLUGGY_CRYPT_SECRET),
+                    CryptUtil.decrypt(originalAccountId, PLUGGY_CRYPT_SECRET),
+                            startDate,
+                            endDate)
+                    .stream()
+                    .map(t -> {
+                        TransactionEntity entity = t.toTransactionEntity();
+                        entity.setUserAccount(user);
+                        entity.setPluggyAccountId(pluggyAccountData);
+                        return entity;
+                    }).toList();
+        } catch (Exception e) {
+            throw new BusinessException("Error fetching transactions from pluggy API:" + e.getMessage());
+        }
     }
 
     /* Métodos privados */

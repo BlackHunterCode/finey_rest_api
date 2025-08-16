@@ -13,6 +13,6 @@ import org.springframework.data.repository.query.Param;
 public interface PluggyItemRepository extends JpaRepository<PluggyItemEntity, UUID> {
     Optional<PluggyItemEntity> findByConnectorId(String connectorId);
 
-    @Query("SELECT p.itemId FROM PluggyItemEntity p WHERE p.userAccount.accountId = :userId")
-    List<UUID> findAllItemsByUserId(@Param("userId") UUID userId);
+    @Query("SELECT p FROM PluggyItemEntity p WHERE p.userAccount.accountId = :userId")
+    List<PluggyItemEntity> findAllItemsByUserId(@Param("userId") UUID userId);
 }

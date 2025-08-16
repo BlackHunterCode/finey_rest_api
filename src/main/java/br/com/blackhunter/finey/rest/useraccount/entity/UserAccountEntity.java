@@ -9,15 +9,26 @@
 
 package br.com.blackhunter.finey.rest.useraccount.entity;
 
-import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
-import br.com.blackhunter.finey.rest.integrations.pluggy.entity.PluggyItemEntity;
-import br.com.blackhunter.finey.rest.useraccount.enums.UserAccountStatus;
-import jakarta.persistence.*;
-import lombok.Data;
-
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+
+import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
+import br.com.blackhunter.finey.rest.integrations.pluggy.entity.PluggyItemEntity;
+import br.com.blackhunter.finey.rest.useraccount.enums.UserAccountStatus;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.Table;
+import lombok.Data;
+import lombok.ToString;
 
 /**
  * <p>Classe <code>UserAccountEntity</code>.</p>
@@ -51,12 +62,15 @@ public class UserAccountEntity {
     private LocalDateTime lastLoginAt;
 
     @OneToOne(mappedBy = "userAccount", cascade = CascadeType.ALL)
+    @ToString.Exclude
     private UserProfileEntity userProfile;
 
     @OneToMany(mappedBy = "userAccount", cascade = CascadeType.ALL)
+    @ToString.Exclude
     private Set<TransactionEntity> transactions;
 
     @OneToMany(mappedBy = "userAccount", cascade = CascadeType.ALL)
+    @ToString.Exclude
     private Set<PluggyItemEntity> pluggyItems;
 
     /**

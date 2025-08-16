@@ -217,6 +217,8 @@ public class GlobalExceptionHandler extends BaseExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<String>> handleAllUncaughtException(Exception ex, WebRequest request) {
         UUID traceId = stackTraceExceptionService.saveException(ex);
+        System.out.println(ex.getMessage());
+        System.out.println(traceId);
         return internalServerError("An internal server error occurred", request, traceId);
     }
 }
