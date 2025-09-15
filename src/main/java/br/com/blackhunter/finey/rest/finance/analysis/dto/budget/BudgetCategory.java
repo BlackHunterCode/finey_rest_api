@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class BudgetCategory {
     private String name;
     private String icon;
-    private double budgetAmount;
-    private double spentAmount;
-    private double percentage;
+    private String budgetAmount;
+    private String spentAmount;
+    private String percentage;
 }

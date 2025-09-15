@@ -91,7 +91,6 @@ public class TransactionServiceImpl implements TransactionService {
      */
     @Override
     public TotalTransactionsPeriod getTotalTransactionsPeriod(List<String> bankAccountIds, LocalDate referenceDateMonthYear, LocalDate startDate, LocalDate endDate) {
-        System.out.println("Calculando total de transações no período");
         List<TransactionData> allTransactions = new ArrayList<>();
         for(String accountId: bankAccountIds) {
             allTransactions.addAll(getAllTransactionsPeriodByAccountId(accountId, referenceDateMonthYear, startDate, endDate));
@@ -106,7 +105,6 @@ public class TransactionServiceImpl implements TransactionService {
         BigDecimal totalEarnings = BigDecimal.ZERO;
         BigDecimal totalExpenses = BigDecimal.ZERO;
 
-        System.out.println("Lista de transações antes de calcular o total: " + transactions);
         for (TransactionData transaction : transactions) {
             if (transaction.getType() == TransactionType.CREDIT) {
                 // entrada
@@ -124,15 +122,12 @@ public class TransactionServiceImpl implements TransactionService {
 
     public List<TransactionData> getAllTransactionsPeriodByAccountId(String accountId, LocalDate referenceDateMonthYear, LocalDate startDate, LocalDate endDate) {
         try {
-            System.out.println("Calculando período de transações");
             String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
             TransactionPeriodDate transactionPeriodDate = DateTimeUtil.getTransactionPeriodDate(referenceDateMonthYear, startDate, endDate);
 
-            System.out.println("Buscando transações");
             // buscar transações no período
             List<TransactionEntity> transactions = transactionRepository.findAllByFinancialAccountIdAndDateBetween(UUID.fromString(accountEntityId), transactionPeriodDate.getStartDate(), transactionPeriodDate.getEndDate());
 
-            System.out.println("Passou por aqui: " + transactionPeriodDate);
             // buscar na API d pluggy
             if(transactions.isEmpty()) {
                 FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
@@ -143,9 +138,6 @@ public class TransactionServiceImpl implements TransactionService {
                         transactionPeriodDate.getEndDate()
                 );
             }
-
-            System.out.println("Transações encontradas: " + transactions.size());
-            System.out.println("Transações: " + transactions);
 
             return transactions.stream().map(transactionMapper::toData).toList();
         } catch (Exception e) {

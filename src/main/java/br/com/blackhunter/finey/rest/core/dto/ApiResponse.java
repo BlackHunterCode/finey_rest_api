@@ -13,6 +13,7 @@
 
 package br.com.blackhunter.finey.rest.core.dto;
 
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
@@ -30,6 +31,7 @@ import java.util.UUID;
  */
 @Data
 @NoArgsConstructor
+@Builder
 public class ApiResponse<T> {
     /**
      * Status da resposta (ex: "SUCCESS", "ERROR", "VALIDATION_ERROR")

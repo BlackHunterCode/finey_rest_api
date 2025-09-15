@@ -10,8 +10,8 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 public class SavingsInvestments {
-    double totalInvested;
-    double totalReturn;
-    double totalReturnPercentage;
+    String totalInvested;
+    String totalReturn;
+    String totalReturnPercentage;
     List<Investment> investments;
 }

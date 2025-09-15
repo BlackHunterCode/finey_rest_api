@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 public class ExpenseCategory {
     private String name;
     private String icon;
-    private double amount;
-    private double percentage;
-    private double previousPercentage;
+    private String amount;
+    private String percentage;
+    private String previousPercentage;
 }

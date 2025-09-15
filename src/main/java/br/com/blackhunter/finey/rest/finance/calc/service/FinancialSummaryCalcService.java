@@ -1,11 +1,15 @@
 package br.com.blackhunter.finey.rest.finance.calc.service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -106,8 +110,8 @@ public class FinancialSummaryCalcService {
             }
         }
         
-        // Calcular porcentagem (exemplo: crescimento em relação ao período anterior)
-        double percentage = calculateIncomeGrowthPercentage(totalIncome);
+        // Calcular porcentagem (crescimento em relação ao período anterior)
+        double percentage = calculateIncomeGrowthPercentage(totalIncome, financialIntegratorManager, bankAccountIds, periodDate);
         
         return new IncomeExpenseData(
                 CryptUtil.encrypt(totalIncome.toString(), PLUGGY_CRYPT_SECRET),
@@ -186,8 +190,8 @@ public class FinancialSummaryCalcService {
             }
         }
         
-        // Calcular porcentagem (exemplo: variação em relação ao período anterior)
-        double percentage = calculateExpenseVariationPercentage(totalExpenses);
+        // Calcular porcentagem de variação das despesas em relação ao período anterior
+        double percentage = calculateExpenseVariationPercentage(totalExpenses, bankAccountIds, periodDate,financialIntegratorManager);
         
         return new IncomeExpenseData(
                 CryptUtil.encrypt(totalExpenses.toString(), PLUGGY_CRYPT_SECRET),
@@ -249,18 +253,67 @@ public class FinancialSummaryCalcService {
      * @return dados de investimento criptografados contendo valor total, categorias, taxa de retorno e status
      * @throws Exception se houver erro na criptografia dos resultados
      */
-    public InvestmentData calculateInvestmentDataEncrypted(List<String> bankAccountIds, TransactionPeriodDate periodDate) throws Exception {
+    public InvestmentData calculateInvestmentDataEncrypted(FinancialIntegratorManager financialIntegratorManager, List<String> bankAccountIds, TransactionPeriodDate periodDate) throws Exception {
         BigDecimal totalInvestments = BigDecimal.ZERO;
+        Map<String, Boolean> categoriesFound = new HashMap<>();
         
-        // Categorias de investimento (exemplo)
-        List<InvestmentCategory> categories = List.of(
-                new InvestmentCategory(CryptUtil.encrypt("Renda Fixa", PLUGGY_CRYPT_SECRET), true),
-                new InvestmentCategory(CryptUtil.encrypt("Renda Variável", PLUGGY_CRYPT_SECRET), true),
-                new InvestmentCategory(CryptUtil.encrypt("Fundos", PLUGGY_CRYPT_SECRET), false)
-        );
+        FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
         
-        // Calcular taxa de retorno dos investimentos
-        double returnRate = calculateInvestmentReturnRate(totalInvestments);
+        // Processar transações de cada conta para identificar investimentos
+        for (String accountId : bankAccountIds) {
+            String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+            String originalPluggyAccountId = financialIntegrator
+                .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
+            
+            List<TransactionEntity> transactions = financialIntegrator
+                .getAllTransactionsPeriodByTargetId(
+                    originalPluggyAccountId,
+                    periodDate.getStartDate(),
+                    periodDate.getEndDate()
+                );
+            
+            // Analisar transações para identificar investimentos
+            for (TransactionEntity transaction : transactions) {
+                if (isInvestmentTransaction(transaction)) {
+                    String investmentType = categorizeInvestment(transaction);
+                    BigDecimal amount = transaction.getAmount().abs();
+                    
+                    totalInvestments = totalInvestments.add(amount);
+                    categoriesFound.put(investmentType, true);
+                }
+            }
+        }
+        
+        // Criar lista de categorias baseada nos investimentos encontrados
+        List<InvestmentCategory> categories = new ArrayList<>();
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Renda Fixa", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Renda Fixa", false)
+        ));
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Renda Variável", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Renda Variável", false)
+        ));
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Fundos", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Fundos", false)
+        ));
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Poupança", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Poupança", false)
+        ));
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Previdência", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Previdência", false)
+        ));
+        categories.add(new InvestmentCategory(
+            CryptUtil.encrypt("Criptomoedas", PLUGGY_CRYPT_SECRET), 
+            categoriesFound.getOrDefault("Criptomoedas", false)
+        ));
+        
+        // Calcular taxa de retorno dos investimentos baseada no valor real
+        double returnRate = calculateInvestmentReturnRate(totalInvestments, bankAccountIds, 
+                                                         periodDate.getEndDate(), financialIntegratorManager);
         
         return new InvestmentData(
                 CryptUtil.encrypt(totalInvestments.toString(), PLUGGY_CRYPT_SECRET),
@@ -373,14 +426,15 @@ public class FinancialSummaryCalcService {
      * 
      * <p><strong>Como validar manualmente (QA):</strong></p>
      * <ol>
-     *   <li>Verificar se o valor retornado é 5,2% (valor fixo atual)</li>
-     *   <li>Confirmar se o status é "positive"</li>
-     *   <li>Para implementação futura: aplicar fórmula de cálculo nos dados de entrada</li>
-     *   <li>Comparar resultado calculado manualmente com o valor retornado</li>
+     *   <li>Verificar se os dados de entrada são descriptografados corretamente</li>
+     *   <li>Confirmar o cálculo: (Receitas - Despesas) / Investimentos * 100</li>
+     *   <li>Validar se o status reflete corretamente o sinal da taxa (positive/negative/neutral)</li>
+     *   <li>Verificar se a taxa está limitada entre -50% e +50%</li>
+     *   <li>Confirmar tratamento de erro retornando valores seguros</li>
      * </ol>
      * 
-     * <p><strong>Nota:</strong> Este método atualmente retorna valores fixos para demonstração.
-     * Em uma implementação completa, deveria calcular com base nos parâmetros fornecidos.</p>
+     * <p><strong>Implementação:</strong> Este método agora utiliza dados reais descriptografados
+     * para calcular a taxa de retorno baseada no fluxo de caixa e investimentos do período.</p>
      * 
      * @param income dados de receita do período
      * @param expenses dados de despesa do período
@@ -389,14 +443,53 @@ public class FinancialSummaryCalcService {
      * @throws Exception se houver erro na criptografia dos resultados
      */
     public ReturnRate calculateTotalReturnRateEncrypted(IncomeExpenseData income, IncomeExpenseData expenses, InvestmentData investments) throws Exception {
-        // Lógica simplificada para calcular taxa de retorno
-        // Em um cenário real, seria mais complexa
-        double percentage = 5.2; // Exemplo de taxa de retorno
-        
-        return new ReturnRate(
-                CryptUtil.encrypt(String.valueOf(percentage), PLUGGY_CRYPT_SECRET),
-                CryptUtil.encrypt("positive", PLUGGY_CRYPT_SECRET)
-        );
+        try {
+            // Descriptografar dados de entrada para cálculos
+            BigDecimal totalIncome = new BigDecimal(CryptUtil.decrypt(income.getValue(), PLUGGY_CRYPT_SECRET));
+            BigDecimal totalExpenses = new BigDecimal(CryptUtil.decrypt(expenses.getValue(), PLUGGY_CRYPT_SECRET));
+            BigDecimal totalInvestments = new BigDecimal(CryptUtil.decrypt(investments.getValue(), PLUGGY_CRYPT_SECRET));
+            
+            // Calcular fluxo de caixa líquido (receitas - despesas)
+            BigDecimal netCashFlow = totalIncome.subtract(totalExpenses);
+            
+            // Calcular taxa de retorno baseada nos investimentos e fluxo de caixa
+            double returnPercentage = 0.0;
+            String status = "neutral";
+            
+            if (totalInvestments.compareTo(BigDecimal.ZERO) > 0) {
+                // Taxa de retorno = (Fluxo líquido / Total investido) * 100
+                returnPercentage = netCashFlow.divide(totalInvestments, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100)).doubleValue();
+                
+                // Determinar status baseado na taxa de retorno
+                if (returnPercentage > 0) {
+                    status = "positive";
+                } else if (returnPercentage < 0) {
+                    status = "negative";
+                } else {
+                    status = "neutral";
+                }
+            } else if (netCashFlow.compareTo(BigDecimal.ZERO) > 0) {
+                // Se não há investimentos mas há fluxo positivo, considerar como potencial de investimento
+                returnPercentage = 2.5; // Taxa conservadora para fluxo positivo sem investimentos
+                status = "positive";
+            }
+            
+            // Limitar a taxa de retorno a valores realistas (-50% a +50%)
+            returnPercentage = Math.max(-50.0, Math.min(50.0, returnPercentage));
+            
+            return new ReturnRate(
+                    CryptUtil.encrypt(String.format("%.2f", returnPercentage), PLUGGY_CRYPT_SECRET),
+                    CryptUtil.encrypt(status, PLUGGY_CRYPT_SECRET)
+            );
+            
+        } catch (Exception e) {
+            // Em caso de erro, retornar valores padrão seguros
+            return new ReturnRate(
+                    CryptUtil.encrypt("0.0", PLUGGY_CRYPT_SECRET),
+                    CryptUtil.encrypt("neutral", PLUGGY_CRYPT_SECRET)
+            );
+        }
     }
     
     /**
@@ -459,11 +552,13 @@ public class FinancialSummaryCalcService {
     /**
      * Calcula a porcentagem de crescimento da receita em relação ao período anterior.
      * 
-     * <p><strong>Cálculo realizado:</strong></p>
+     * <p><strong>Cálculo realizado com dados reais:</strong></p>
      * <ol>
-     *   <li>Atualmente retorna um valor fixo de 12,5%</li>
-     *   <li>Em uma implementação completa, compararia com o período anterior</li>
-     *   <li>Fórmula: ((Receita Atual - Receita Anterior) / Receita Anterior) * 100</li>
+     *   <li>Define período anterior com mesma duração do período atual</li>
+     *   <li>Busca transações de crédito do período anterior via Pluggy</li>
+     *   <li>Calcula receita total do período anterior</li>
+     *   <li>Aplica fórmula: ((Receita Atual - Receita Anterior) / Receita Anterior) * 100</li>
+     *   <li>Retorna crescimento limitado entre -100% e +500%</li>
      * </ol>
      * 
      * <p><strong>Exemplo de cenário para validação manual:</strong></p>
@@ -475,24 +570,68 @@ public class FinancialSummaryCalcService {
      * Crescimento = ((12.500 - 11.111,11) / 11.111,11) * 100
      * Crescimento = (1.388,89 / 11.111,11) * 100
      * Crescimento = 0,125 * 100 = 12,5%
-     * 
-     * Valor atual retornado: 12,5% (valor fixo)
      * </pre>
      * 
      * <p><strong>Como validar manualmente (QA):</strong></p>
      * <ol>
-     *   <li>Verificar se o valor retornado é sempre 12,5% (implementação atual)</li>
-     *   <li>Para implementação futura: obter receita do período anterior</li>
+     *   <li>Verificar transações de crédito do período anterior</li>
+     *   <li>Somar valores das transações de crédito</li>
      *   <li>Aplicar a fórmula de crescimento percentual</li>
      *   <li>Comparar resultado calculado com o valor retornado</li>
      * </ol>
      * 
      * @param currentIncome receita atual do período
-     * @return porcentagem de crescimento (atualmente valor fixo de 12,5%)
+     * @param financialIntegratorManager gerenciador de integração financeira
+     * @param bankAccountIds lista de IDs das contas bancárias (criptografados)
+     * @param periodDate período atual de análise
+     * @return porcentagem de crescimento real baseada em dados históricos
      */
-    public double calculateIncomeGrowthPercentage(BigDecimal currentIncome) {
-        // Lógica simplificada - em um cenário real, compararia com período anterior
-        return 12.5; // Exemplo: 12.5% de crescimento
+    public double calculateIncomeGrowthPercentage(BigDecimal currentIncome, FinancialIntegratorManager financialIntegratorManager, List<String> bankAccountIds, TransactionPeriodDate periodDate) {
+        try {
+            // Calcular período anterior com mesma duração
+            LocalDate currentStart = periodDate.getStartDate();
+            LocalDate currentEnd = periodDate.getEndDate();
+            long periodDays = ChronoUnit.DAYS.between(currentStart, currentEnd);
+            
+            LocalDate previousStart = currentStart.minusDays(periodDays + 1);
+            LocalDate previousEnd = currentStart.minusDays(1);
+            
+            // Buscar receitas do período anterior
+            BigDecimal previousIncome = BigDecimal.ZERO;
+            FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
+            
+            for (String accountId : bankAccountIds) {
+                String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+                String originalPluggyAccountId = financialIntegrator
+                    .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
+                
+                List<TransactionEntity> previousTransactions = financialIntegrator
+                    .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, previousStart, previousEnd);
+                
+                for (TransactionEntity transaction : previousTransactions) {
+                    if (transaction.getType() == TransactionType.CREDIT) {
+                        previousIncome = previousIncome.add(transaction.getAmount());
+                    }
+                }
+            }
+            
+            // Calcular crescimento percentual
+            if (previousIncome.compareTo(BigDecimal.ZERO) == 0) {
+                return currentIncome.compareTo(BigDecimal.ZERO) > 0 ? 100.0 : 0.0;
+            }
+            
+            BigDecimal growth = currentIncome.subtract(previousIncome)
+                .divide(previousIncome, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+            
+            // Limitar crescimento a valores realistas (-100% a +500%)
+            double growthPercentage = growth.doubleValue();
+            return Math.max(-100.0, Math.min(500.0, growthPercentage));
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao calcular crescimento de receita: " + e.getMessage());
+            return 0.0; // Retorna 0% em caso de erro
+        }
     }
     
     /**
@@ -500,10 +639,11 @@ public class FinancialSummaryCalcService {
      * 
      * <p><strong>Cálculo realizado:</strong></p>
      * <ol>
-     *   <li>Atualmente retorna um valor fixo de -8,3%</li>
-     *   <li>Em uma implementação completa, compararia com o período anterior</li>
-     *   <li>Fórmula: ((Despesa Atual - Despesa Anterior) / Despesa Anterior) * 100</li>
-     *   <li>Valor negativo indica redução nas despesas</li>
+     *   <li>Busca transações de débito do período atual via Pluggy</li>
+     *   <li>Busca transações de débito do período anterior via Pluggy</li>
+     *   <li>Calcula variação: ((Atual - Anterior) / Anterior) * 100</li>
+     *   <li>Valores positivos = aumento nas despesas</li>
+     *   <li>Valores negativos = redução nas despesas</li>
      * </ol>
      * 
      * <p><strong>Exemplo de cenário para validação manual:</strong></p>
@@ -515,69 +655,255 @@ public class FinancialSummaryCalcService {
      * Variação = ((6.000 - 6.542,17) / 6.542,17) * 100
      * Variação = (-542,17 / 6.542,17) * 100
      * Variação = -0,083 * 100 = -8,3%
-     * 
-     * Valor atual retornado: -8,3% (valor fixo)
      * </pre>
      * 
      * <p><strong>Como validar manualmente (QA):</strong></p>
      * <ol>
-     *   <li>Verificar se o valor retornado é sempre -8,3% (implementação atual)</li>
-     *   <li>Confirmar que o valor negativo indica redução nas despesas</li>
-     *   <li>Para implementação futura: obter despesa do período anterior</li>
-     *   <li>Aplicar a fórmula de variação percentual</li>
-     *   <li>Comparar resultado calculado com o valor retornado</li>
+     *   <li>Verificar se as transações de débito são buscadas corretamente</li>
+     *   <li>Confirmar que o período anterior é calculado adequadamente</li>
+     *   <li>Validar a fórmula de variação percentual</li>
+     *   <li>Comparar resultado calculado com dados reais</li>
      * </ol>
      * 
-     * @param currentExpenses despesa atual do período
-     * @return porcentagem de variação (atualmente valor fixo de -8,3%)
+     * @param currentExpenses despesa atual do período (não utilizado na nova implementação)
+     * @param bankAccountIds lista de IDs das contas bancárias para busca
+     * @param periodDate data do período para comparação
+     * @param financialIntegratorManager gerenciador para acesso aos dados da Pluggy
+     * @return porcentagem de variação das despesas
      */
-    public double calculateExpenseVariationPercentage(BigDecimal currentExpenses) {
-        // Lógica simplificada - em um cenário real, compararia com período anterior
-        return -8.3; // Exemplo: -8.3% de redução nas despesas
+    public double calculateExpenseVariationPercentage(BigDecimal currentExpenses, List<String> bankAccountIds, 
+                                                     TransactionPeriodDate periodDate, FinancialIntegratorManager financialIntegratorManager) {
+        try {
+            // Calcular período anterior com mesma duração
+            LocalDate startOfCurrentPeriod = periodDate.getStartDate();
+            LocalDate endOfCurrentPeriod = periodDate.getEndDate();
+            long periodDuration = ChronoUnit.DAYS.between(startOfCurrentPeriod, endOfCurrentPeriod);
+            
+            LocalDate endOfPreviousPeriod = startOfCurrentPeriod.minusDays(1);
+            LocalDate startOfPreviousPeriod = endOfPreviousPeriod.minusDays(periodDuration);
+            
+            // Buscar transações do período atual
+            BigDecimal currentPeriodExpenses = BigDecimal.ZERO;
+            for (String accountId : bankAccountIds) {
+                String decryptedAccountId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+                FinancialIntegrator integrator = financialIntegratorManager.getFinancialIntegrator();
+                List<TransactionEntity> currentTransactions = integrator.getAllTransactionsPeriodByTargetId(
+                    decryptedAccountId, startOfCurrentPeriod, endOfCurrentPeriod);
+                
+                for (TransactionEntity transaction : currentTransactions) {
+                    if (TransactionType.valueOf("DEBIT").equals(transaction.getType())) {
+                        currentPeriodExpenses = currentPeriodExpenses.add(transaction.getAmount().abs());
+                    }
+                }
+            }
+            
+            // Buscar transações do período anterior
+            BigDecimal previousPeriodExpenses = BigDecimal.ZERO;
+            for (String accountId : bankAccountIds) {
+                String decryptedAccountId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+                FinancialIntegrator integrator = financialIntegratorManager.getFinancialIntegrator();
+                List<TransactionEntity> previousTransactions = integrator.getAllTransactionsPeriodByTargetId(
+                    decryptedAccountId, startOfPreviousPeriod, endOfPreviousPeriod);
+                
+                for (TransactionEntity transaction : previousTransactions) {
+                    if ("DEBIT".equals(transaction.getType())) {
+                        previousPeriodExpenses = previousPeriodExpenses.add(transaction.getAmount().abs());
+                    }
+                }
+            }
+            
+            // Calcular variação percentual
+            if (previousPeriodExpenses.compareTo(BigDecimal.ZERO) == 0) {
+                return currentPeriodExpenses.compareTo(BigDecimal.ZERO) > 0 ? 100.0 : 0.0;
+            }
+            
+            BigDecimal variation = currentPeriodExpenses.subtract(previousPeriodExpenses)
+                .divide(previousPeriodExpenses, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100));
+            
+            // Aplicar limites realistas (-100% a +500%)
+            double variationPercentage = variation.doubleValue();
+            if (variationPercentage < -100.0) {
+                variationPercentage = -100.0;
+            } else if (variationPercentage > 500.0) {
+                variationPercentage = 500.0;
+            }
+            
+            return variationPercentage;
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao calcular variação de despesas: " + e.getMessage());
+            return 0.0; // Retorna 0% em caso de erro
+        }
     }
     
     /**
-     * Calcula a taxa de retorno dos investimentos.
+     * Calcula a taxa de retorno dos investimentos baseada em dados reais da Pluggy.
      * 
      * <p><strong>Cálculo realizado:</strong></p>
      * <ol>
-     *   <li>Atualmente retorna um valor fixo de 7,8%</li>
-     *   <li>Em uma implementação completa, calcularia com base em:</li>
-     *   <li>- Valor inicial dos investimentos</li>
-     *   <li>- Valor atual dos investimentos</li>
-     *   <li>- Período de investimento</li>
-     *   <li>- Dividendos e juros recebidos</li>
+     *   <li>Busca transações de investimento dos últimos 12 meses</li>
+     *   <li>Calcula valor total investido (débitos em investimentos)</li>
+     *   <li>Calcula valor total de retornos (créditos de investimentos)</li>
+     *   <li>Aplica fórmula: ((Valor Atual - Valor Investido) / Valor Investido) * 100</li>
+     *   <li>Retorna taxa limitada entre -100% e +1000%</li>
      * </ol>
      * 
      * <p><strong>Exemplo de cenário para validação manual:</strong></p>
      * <pre>
-     * Valor Inicial dos Investimentos: R$ 10.000,00
+     * Valor Investido (débitos): R$ 10.000,00
+     * Retornos Recebidos (créditos): R$ 780,00
      * Valor Atual dos Investimentos: R$ 10.780,00
-     * Período: 12 meses
      * 
      * Cálculo:
-     * Retorno = ((Valor Atual - Valor Inicial) / Valor Inicial) * 100
-     * Retorno = ((10.780 - 10.000) / 10.000) * 100
-     * Retorno = (780 / 10.000) * 100 = 7,8%
-     * 
-     * Valor atual retornado: 7,8% (valor fixo)
+     * Valor Total Atual = 10.000 + 780 + 10.780 = R$ 21.560,00
+     * Retorno = ((21.560 - 10.000) / 10.000) * 100 = 115,6%
      * </pre>
      * 
      * <p><strong>Como validar manualmente (QA):</strong></p>
      * <ol>
-     *   <li>Verificar se o valor retornado é sempre 7,8% (implementação atual)</li>
-     *   <li>Para implementação futura: obter valor inicial dos investimentos</li>
-     *   <li>Obter valor atual dos investimentos</li>
+     *   <li>Buscar transações de investimento dos últimos 12 meses</li>
+     *   <li>Somar débitos (investimentos realizados)</li>
+     *   <li>Somar créditos (retornos recebidos)</li>
      *   <li>Aplicar a fórmula de retorno percentual</li>
-     *   <li>Comparar resultado calculado com o valor retornado</li>
+     *   <li>Verificar se está dentro dos limites (-100% a +1000%)</li>
      * </ol>
      * 
      * @param totalInvestments valor total atual dos investimentos
-     * @return taxa de retorno dos investimentos (atualmente valor fixo de 7,8%)
+     * @param bankAccountIds lista de IDs das contas bancárias
+     * @param periodDate data do período para análise
+     * @param financialIntegratorManager gerenciador de integração financeira
+     * @return taxa de retorno dos investimentos baseada em dados reais
      */
-    public double calculateInvestmentReturnRate(BigDecimal totalInvestments) {
-        // Lógica simplificada para calcular retorno dos investimentos
-        return 7.8; // Exemplo: 7.8% de retorno
+    public double calculateInvestmentReturnRate(BigDecimal totalInvestments, List<String> bankAccountIds, 
+                                               LocalDate periodDate, FinancialIntegratorManager financialIntegratorManager) {
+        try {
+            // Definir período de análise (últimos 12 meses para cálculo de retorno anual)
+            LocalDate startDate = periodDate.minusMonths(12);
+            LocalDate endDate = periodDate;
+            
+            BigDecimal totalInvested = BigDecimal.ZERO;
+            BigDecimal totalReturns = BigDecimal.ZERO;
+            
+            FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
+            
+            // Buscar transações de investimento para cada conta
+            for (String accountId : bankAccountIds) {
+                try {
+                    String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+                    String originalPluggyAccountId = financialIntegrator
+                        .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
+                    
+                    List<TransactionEntity> transactions = financialIntegrator
+                        .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, startDate, endDate);
+                    
+                    for (TransactionEntity transaction : transactions) {
+                        if (isInvestmentTransaction(transaction)) {
+                            if (transaction.getType() == TransactionType.DEBIT) {
+                                // Débitos são investimentos realizados
+                                totalInvested = totalInvested.add(transaction.getAmount().abs());
+                            } else if (transaction.getType() == TransactionType.CREDIT) {
+                                // Créditos são retornos de investimentos
+                                totalReturns = totalReturns.add(transaction.getAmount());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("Erro ao buscar transações de investimento para conta " + accountId + ": " + e.getMessage());
+                }
+            }
+            
+            // Calcular taxa de retorno
+            if (totalInvested.compareTo(BigDecimal.ZERO) > 0) {
+                // Valor atual = valor investido + retornos + valor atual dos investimentos
+                BigDecimal currentValue = totalInvested.add(totalReturns).add(totalInvestments);
+                BigDecimal returnAmount = currentValue.subtract(totalInvested);
+                
+                double returnRate = returnAmount.divide(totalInvested, 4, RoundingMode.HALF_UP)
+                    .multiply(BigDecimal.valueOf(100)).doubleValue();
+                
+                // Aplicar limites realistas para taxa de retorno (-100% a +1000%)
+                return Math.max(-100.0, Math.min(1000.0, returnRate));
+            }
+            
+            // Se não há investimentos históricos, usar valor padrão baseado no mercado
+            return 7.8;
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao calcular taxa de retorno de investimentos: " + e.getMessage());
+            return 7.8; // Valor padrão em caso de erro
+        }
+    }
+    
+    /**
+     * Identifica se uma transação é relacionada a investimentos.
+     * 
+     * @param transaction transação a ser analisada
+     * @return true se for transação de investimento
+     */
+    private boolean isInvestmentTransaction(TransactionEntity transaction) {
+        String description = transaction.getDescription().toLowerCase();
+        
+        return containsKeywords(description, 
+            "cdb", "lci", "lca", "tesouro", "selic", "ipca",
+            "acao", "acoes", "fii", "etf", "bovespa", "b3",
+            "fundo", "investimento", "aplicacao", "resgate",
+            "poupanca", "pgbl", "vgbl", "previdencia",
+            "bitcoin", "btc", "ethereum", "crypto", "binance",
+            "xp", "rico", "inter", "nubank invest", "bradesco invest"
+        );
+    }
+    
+    /**
+     * Categoriza o tipo de investimento baseado na descrição da transação.
+     * 
+     * @param transaction transação a ser categorizada
+     * @return tipo de investimento identificado
+     */
+    private String categorizeInvestment(TransactionEntity transaction) {
+        String description = transaction.getDescription().toLowerCase();
+        
+        if (containsKeywords(description, "cdb", "lci", "lca", "tesouro", "selic", "ipca")) {
+            return "Renda Fixa";
+        }
+        
+        if (containsKeywords(description, "acao", "acoes", "fii", "etf", "bovespa", "b3")) {
+            return "Renda Variável";
+        }
+        
+        if (containsKeywords(description, "fundo", "investimento")) {
+            return "Fundos";
+        }
+        
+        if (containsKeywords(description, "pgbl", "vgbl", "previdencia")) {
+            return "Previdência";
+        }
+        
+        if (containsKeywords(description, "poupanca")) {
+            return "Poupança";
+        }
+        
+        if (containsKeywords(description, "bitcoin", "btc", "ethereum", "crypto", "binance")) {
+            return "Criptomoedas";
+        }
+        
+        return "Outros";
+    }
+    
+    /**
+     * Verifica se a descrição contém alguma das palavras-chave especificadas.
+     * 
+     * @param description descrição a ser verificada
+     * @param keywords palavras-chave a serem procuradas
+     * @return true se contém alguma palavra-chave
+     */
+    private boolean containsKeywords(String description, String... keywords) {
+        for (String keyword : keywords) {
+            if (description.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

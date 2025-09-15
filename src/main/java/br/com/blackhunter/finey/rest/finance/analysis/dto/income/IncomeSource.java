@@ -9,8 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class IncomeSource {
     private String name;
-    private double amount;
-    private double percentage;
+    private String amount;
+    private String percentage;
     private boolean isRecurring;
     private String icon;
 }

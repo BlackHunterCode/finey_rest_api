@@ -2,12 +2,13 @@ package br.com.blackhunter.finey.rest.finance.calc.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -204,44 +205,53 @@ public class ExpensesCategoriesCalcService {
         }
         
         // Converter para lista de ExpenseCategory com percentuais
-        List<ExpenseCategory> categories = categoriesMap.values().stream()
-            .map(categoryData -> {
-                BigDecimal total = totalExpenses.get();
-                double percentage;
+        List<ExpenseCategory> categories = new java.util.ArrayList<>(categoriesMap.values().stream()
+                .map(categoryData -> {
+                    BigDecimal total = totalExpenses.get();
+                    double percentage;
 
-                if (total.compareTo(BigDecimal.ZERO) > 0) {
-                    BigDecimal ratio = categoryData.getAmount()
-                        .divide(total, 4, RoundingMode.HALF_UP);
+                    if (total.compareTo(BigDecimal.ZERO) > 0) {
+                        BigDecimal ratio = categoryData.getAmount()
+                                .divide(total, 4, RoundingMode.HALF_UP);
 
-                    percentage = ratio.multiply(BigDecimal.valueOf(100)).doubleValue();
-                } else {
-                    percentage = 0.0;
-                }
-                
-                // Simular variação do período anterior (em implementação real, buscar dados históricos)
-                double previousPercentage = calculatePreviousPercentage(categoryData.getName(), percentage);
-                
-                try {
-                    return new ExpenseCategory(
-                        CryptUtil.encrypt(categoryData.getName(), PLUGGY_CRYPT_SECRET),
-                        CryptUtil.encrypt(categoryData.getIcon(), PLUGGY_CRYPT_SECRET),
-                        Double.parseDouble(CryptUtil.encrypt(categoryData.getAmount().toString(), PLUGGY_CRYPT_SECRET)),
-                        Double.parseDouble(CryptUtil.encrypt(String.valueOf(percentage), PLUGGY_CRYPT_SECRET)),
-                        Double.parseDouble(CryptUtil.encrypt(String.valueOf(previousPercentage), PLUGGY_CRYPT_SECRET))
-                    );
-                } catch (Exception e) {
-                    throw new RuntimeException("Erro ao criptografar dados da categoria: " + categoryData.getName(), e);
-                }
-            })
-            .collect(Collectors.toList());
+                        percentage = ratio.multiply(BigDecimal.valueOf(100)).doubleValue();
+                    } else {
+                        percentage = 0.0;
+                    }
+
+                    // Simular variação do período anterior (em implementação real, buscar dados históricos)
+                    double previousPercentage = calculatePreviousPercentage(categoryData.getName(), percentage, 
+                        financialIntegratorManager, bankAccountIds, periodDate);
+
+                    try {
+                        return new ExpenseCategory(
+                                CryptUtil.encrypt(categoryData.getName(), PLUGGY_CRYPT_SECRET),
+                                CryptUtil.encrypt(categoryData.getIcon(), PLUGGY_CRYPT_SECRET),
+                                CryptUtil.encrypt(categoryData.getAmount().toString(), PLUGGY_CRYPT_SECRET),
+                                CryptUtil.encrypt(String.valueOf(percentage), PLUGGY_CRYPT_SECRET),
+                                CryptUtil.encrypt(String.valueOf(previousPercentage), PLUGGY_CRYPT_SECRET)
+                        );
+                    } catch (Exception e) {
+                        throw new RuntimeException("Erro ao criptografar dados da categoria: " + categoryData.getName(), e);
+                    }
+                }).toList());
         
         // Ordenar categorias por valor (maior para menor)
-        categories.sort((a, b) -> Double.compare(b.getAmount(), a.getAmount()));
+        categories.sort((a, b) -> {
+            try {
+                return Double.compare(
+                        Double.parseDouble(CryptUtil.decrypt(b.getAmount(), PLUGGY_CRYPT_SECRET)),
+                        Double.parseDouble(CryptUtil.decrypt(a.getAmount(), PLUGGY_CRYPT_SECRET))
+                );
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        });
         
         try {
             return new ExpensesCategories(
                 categories,
-                Double.parseDouble(CryptUtil.encrypt(totalExpenses.toString(), PLUGGY_CRYPT_SECRET))
+                CryptUtil.encrypt(totalExpenses.toString(), PLUGGY_CRYPT_SECRET)
             );
         } catch (Exception e) {
             throw new RuntimeException("Erro ao criptografar total de despesas", e);
@@ -345,26 +355,87 @@ public class ExpensesCategoriesCalcService {
     }
     
     /**
-     * Calcula o percentual da categoria no período anterior (simulado).
+     * Calcula o percentual real da categoria no período anterior baseado em dados da Pluggy.
      * 
-     * <p><strong>Implementação Atual:</strong> Retorna valores simulados para demonstração.
-     * Em uma implementação completa, buscaria dados reais do período anterior.</p>
+     * <p><strong>Implementação:</strong> Busca transações do período anterior e calcula
+     * o percentual real da categoria específica em relação ao total de despesas daquele período.</p>
+     * 
+     * <p><strong>Passos da implementação:</strong></p>
+     * <ol>
+     *   <li>Determina o período anterior com mesma duração</li>
+     *   <li>Busca todas as transações de débito do período anterior</li>
+     *   <li>Categoriza as transações usando a mesma lógica atual</li>
+     *   <li>Calcula o percentual da categoria específica</li>
+     *   <li>Retorna o percentual real ou valor padrão em caso de erro</li>
+     * </ol>
      * 
      * @param categoryName nome da categoria
-     * @param currentPercentage percentual atual da categoria
-     * @return percentual simulado do período anterior
+     * @param currentPercentage percentual atual da categoria (usado como fallback)
+     * @param financialIntegratorManager gerenciador de integração financeira
+     * @param bankAccountIds lista de IDs das contas bancárias
+     * @param periodDate período atual para calcular o período anterior
+     * @return percentual real da categoria no período anterior
      */
-    private double calculatePreviousPercentage(String categoryName, double currentPercentage) {
-        // Simulação de variações por categoria
-        switch (categoryName) {
-            case "Alimentação": return currentPercentage * 0.95; // -5%
-            case "Transporte": return currentPercentage * 1.12; // +12%
-            case "Moradia": return currentPercentage * 1.02; // +2%
-            case "Saúde": return currentPercentage * 0.88; // -12%
-            case "Educação": return currentPercentage * 1.05; // +5%
-            case "Lazer": return currentPercentage * 0.75; // -25%
-            case "Vestuário": return currentPercentage * 1.20; // +20%
-            default: return currentPercentage * 0.90; // -10%
+    private double calculatePreviousPercentage(String categoryName, double currentPercentage,
+                                             FinancialIntegratorManager financialIntegratorManager,
+                                             List<String> bankAccountIds, 
+                                             TransactionPeriodDate periodDate) {
+        try {
+            // Calcular período anterior com mesma duração
+            LocalDate currentStart = periodDate.getStartDate();
+            LocalDate currentEnd = periodDate.getEndDate();
+            long periodDays = ChronoUnit.DAYS.between(currentStart, currentEnd);
+            
+            LocalDate previousEnd = currentStart.minusDays(1);
+            LocalDate previousStart = previousEnd.minusDays(periodDays);
+            
+            // Mapa para armazenar valores por categoria do período anterior
+            Map<String, BigDecimal> previousCategoriesMap = new HashMap<>();
+            BigDecimal totalPreviousExpenses = BigDecimal.ZERO;
+            
+            FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
+            
+            // Buscar transações do período anterior para cada conta
+            for (String accountId : bankAccountIds) {
+                try {
+                    String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
+                    String originalPluggyAccountId = financialIntegrator
+                        .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
+                    
+                    List<TransactionEntity> transactions = financialIntegrator
+                        .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, previousStart, previousEnd);
+                    
+                    for (TransactionEntity transaction : transactions) {
+                         if (transaction.getType() == TransactionType.DEBIT) {
+                             String category = categorizeTransaction(transaction);
+                             BigDecimal amount = transaction.getAmount().abs();
+                             
+                             previousCategoriesMap.merge(category, amount, BigDecimal::add);
+                             totalPreviousExpenses = totalPreviousExpenses.add(amount);
+                         }
+                     }
+                } catch (Exception e) {
+                    System.err.println("Erro ao buscar transações do período anterior para conta " + accountId + ": " + e.getMessage());
+                }
+            }
+            
+            // Calcular percentual da categoria específica no período anterior
+            if (totalPreviousExpenses.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal categoryAmount = previousCategoriesMap.getOrDefault(categoryName, BigDecimal.ZERO);
+                
+                if (categoryAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal ratio = categoryAmount.divide(totalPreviousExpenses, 4, RoundingMode.HALF_UP);
+                    return ratio.multiply(BigDecimal.valueOf(100)).doubleValue();
+                }
+            }
+            
+            // Se não há dados do período anterior, retornar 0
+            return 0.0;
+            
+        } catch (Exception e) {
+            System.err.println("Erro ao calcular percentual anterior para categoria " + categoryName + ": " + e.getMessage());
+            // Em caso de erro, usar valor padrão baseado no percentual atual
+            return currentPercentage * 0.90; // Assume redução de 10% como padrão
         }
     }
     

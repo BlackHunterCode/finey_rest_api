@@ -11,7 +11,7 @@ import java.util.List;
 @NoArgsConstructor
 public class IncomeBreakdown {
     private List<IncomeSource> incomeSources;
-    private double totalIncome;
-    private double recurringIncome;
-    private double variableIncom;
+    private String totalIncome;
+    private String recurringIncome;
+    private String variableIncome;
 }

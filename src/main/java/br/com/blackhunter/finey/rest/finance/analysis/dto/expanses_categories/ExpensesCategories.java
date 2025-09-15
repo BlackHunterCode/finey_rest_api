@@ -11,5 +11,5 @@ import java.util.List;
 @NoArgsConstructor
 public class ExpensesCategories {
     private List<ExpenseCategory> categories;
-    private double totalExpenses;
+    private String totalExpenses;
 }

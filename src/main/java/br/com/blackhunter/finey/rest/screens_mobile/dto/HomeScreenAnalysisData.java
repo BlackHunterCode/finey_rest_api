@@ -11,13 +11,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
-
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 public class HomeScreenAnalysisData {
-    private LocalDate referenceDate;
     private String analysisPeriod;
     private FinancialSummary financialSummary;
     private CurrentBalanceProjection currentBalanceProjection;

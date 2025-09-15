@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor
 public class InvestmentReturn {
-    private double value;
-    private double percentage;
+    private String value;
+    private String percentage;
     private boolean isPositive;
 }
