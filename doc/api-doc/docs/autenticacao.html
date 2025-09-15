@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autenticação - Hunter Wallet API</title>
+    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="light-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Hunter Wallet</h1>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="../index.html"><i class="fas fa-home"></i> Início</a></li>
+                    <li class="active"><a href="index.html"><i class="fas fa-key"></i> Autenticação</a></li>
+                    <li class="nav-section">
+                        <a href="#" class="section-header">
+                            <i class="fas fa-puzzle-piece"></i> Integrações
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="./integracoes/integracoes-financeiras.html">Integrações Financeiras</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-section">
+                        <a href="#" class="section-header">
+                            <i class="fas fa-wallet"></i> Financeiro
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="./financeiro/transacoes.html">Transações</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-container">
+                <section class="section">
+                    <h1>Autenticação</h1>
+                    <p class="lead">A API da Hunter Wallet utiliza um mecanismo de autenticação challenge-response baseado em JWT e HMAC para garantir a segurança das requisições.</p>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <p>Para fins de desenvolvimento, você pode usar o <a href="../../dev/credentials" target="_blank">gerador de credenciais</a> para obter um DeviceID e AppSignature válidos.</p>
+                    </div>
+
+                    <h2>Fluxo de Autenticação</h2>
+                    <p>O fluxo de autenticação segue estes passos:</p>
+                    <ol>
+                        <li>Obtenha um desafio (challenge) do servidor</li>
+                        <li>Assine o desafio com sua chave secreta usando HMAC-SHA256</li>
+                        <li>Envie a assinatura de volta para o servidor</li>
+                        <li>Receba um token JWT para autenticação nas requisições subsequentes</li>
+                    </ol>
+
+                    <h3>1. Solicitar Desafio</h3>
+                    <p>Envie uma requisição GET para obter um desafio único do servidor.</p>
+                    
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="http-method get">GET</span>
+                            <span class="endpoint-path">/v1/public/challenge</span>
+                        </div>
+                        <div class="endpoint-body">
+                            <h4>Cabeçalhos</h4>
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Obrigatório</th>
+                                        <th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>X-Device-ID</td>
+                                        <td>String</td>
+                                        <td>Sim</td>
+                                        <td>Identificador único do dispositivo</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h4>Resposta de Sucesso (200 OK)</h4>
+                            <div class="code-block">
+                                <pre><code class="language-json">{
+    "status": "success",
+    "statusCode": 200,
+    "data": {
+        "challenge": "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8",
+        "expiresIn": 300
+    }
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>2. Gerar Assinatura</h3>
+                    <p>Use o valor do desafio recebido para gerar uma assinatura HMAC-SHA256.</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Exemplo em JavaScript</span>
+                            <button class="copy-btn" aria-label="Copiar código">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code class="language-javascript">const crypto = require('crypto');
+
+function generateSignature(challenge, secretKey) {
+    return crypto
+        .createHmac('sha256', secretKey)
+        .update(challenge)
+        .digest('hex');
+}
+
+const challenge = 'a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8';
+const secretKey = 'sua-chave-secreta-aqui';
+const signature = generateSignature(challenge, secretKey);
+
+console.log('Assinatura gerada:', signature);</code></pre>
+                    </div>
+
+                    <h3>3. Autenticar com a Assinatura</h3>
+                    <p>Envie a assinatura gerada para autenticar e receber o token JWT.</p>
+                    
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="http-method post">POST</span>
+                            <span class="endpoint-path">/v1/public/authenticate</span>
+                        </div>
+                        <div class="endpoint-body">
+                            <h4>Cabeçalhos</h4>
+                            <table class="params-table">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Obrigatório</th>
+                                        <th>Descrição</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>X-Device-ID</td>
+                                        <td>String</td>
+                                        <td>Sim</td>
+                                        <td>Mesmo Device-ID usado na solicitação do desafio</td>
+                                    </tr>
+                                    <tr>
+                                        <td>X-Signature</td>
+                                        <td>String</td>
+                                        <td>Sim</td>
+                                        <td>Assinatura HMAC-SHA256 do desafio</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            
+                            <h4>Corpo da Requisição</h4>
+                            <p>Nenhum corpo necessário para esta requisição.</p>
+                            
+                            <h4>Resposta de Sucesso (200 OK)</h4>
+                            <div class="code-block">
+                                <pre><code class="language-json">{
+    "status": "success",
+    "statusCode": 200,
+    "data": {
+        "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "expiresIn": 3600,
+        "tokenType": "Bearer"
+    }
+}</code></pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h2>Usando o Token JWT</h2>
+                    <p>Após obter o token JWT, inclua-o no cabeçalho <code>Authorization</code> de todas as requisições autenticadas:</p>
+                    
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Exemplo de Uso do Token</span>
+                            <button class="copy-btn" aria-label="Copiar código">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                        <pre><code class="language-javascript">// Exemplo de requisição autenticada
+const response = await fetch('https://api.hunterwallet.com/v1/me', {
+    headers: {
+        'Authorization': 'Bearer seu-token-jwt-aqui'
+    }
+});</code></pre>
+                    </div>
+
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Mantenha seu token JWT seguro e nunca o expon em código do lado do cliente. O token deve ser armazenado de forma segura no lado do cliente.</p>
+                    </div>
+
+                    <h2>Erros Comuns</h2>
+                    
+                    <div class="error-codes">
+                        <div class="error-code">
+                            <h4>400 Bad Request</h4>
+                            <p>Ocorre quando os parâmetros fornecidos são inválidos ou ausentes.</p>
+                        </div>
+                        <div class="error-code">
+                            <h4>401 Unauthorized</h4>
+                            <p>Ocorre quando a autenticação falha ou o token JWT é inválido/expirado.</p>
+                        </div>
+                        <div class="error-code">
+                            <h4>403 Forbidden</h4>
+                            <p>Ocorre quando o usuário não tem permissão para acessar o recurso solicitado.</p>
+                        </div>
+                        <div class="error-code">
+                            <h4>429 Too Many Requests</h4>
+                            <p>Ocorre quando o limite de requisições foi excedido. Tente novamente mais tarde.</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+            
+            <footer class="footer">
+                <div class="footer-content">
+                    <div class="footer-logo">
+                        <h3>Hunter Wallet</h3>
+                        <p>© 2025 Black Hunter - Todos os Direitos Reservados.</p>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Recursos</h4>
+                        <ul>
+                            <li><a href="../../index.html">Documentação</a></li>
+                            <li><a href="#">Referência da API</a></li>
+                            <li><a href="#">Exemplos</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Suporte</h4>
+                        <ul>
+                            <li><a href="#">Central de Ajuda</a></li>
+                            <li><a href="#">Contato</a></li>
+                            <li><a href="#">Status</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>Versão 1.0.0</p>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="../js/main.js"></script>
+</body>
+</html>

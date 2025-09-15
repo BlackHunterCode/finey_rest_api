@@ -60,8 +60,8 @@ public class TransactionDTO {
 
 package br.com.blackhunter.hunter_wallet.rest_api.transaction.controller;
 
-import br.com.blackhunter.hunter_wallet.rest_api.core.controller.BaseController;
-import br.com.blackhunter.hunter_wallet.rest_api.core.dto.ApiResponse;
+import br.com.blackhunter.finey.rest.core.controller.BaseController;
+import br.com.blackhunter.finey.rest.core.dto.ApiResponse;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.dto.TransactionDTO;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.service.TransactionService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -186,7 +186,7 @@ public interface TransactionService {
 
 package br.com.blackhunter.hunter_wallet.rest_api.transaction.service;
 
-import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import exception.core.br.com.blackhunter.finey.rest.BusinessException;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.dto.TransactionDTO;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.entity.TransactionEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.mapper.TransactionMapper;
@@ -238,13 +238,13 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional
     public TransactionDTO create(TransactionDTO transactionDTO) {
         validateTransaction(transactionDTO);
-        
+
         transactionDTO.setTimestamp(LocalDateTime.now());
         transactionDTO.setStatus("PENDING");
-        
+
         TransactionEntity entity = transactionMapper.toEntity(transactionDTO);
         TransactionEntity savedEntity = transactionRepository.save(entity);
-        
+
         return transactionMapper.toDto(savedEntity);
     }
 
@@ -254,11 +254,11 @@ public class TransactionServiceImpl implements TransactionService {
         if (!transactionRepository.existsById(id)) {
             throw new EntityNotFoundException("Transaction not found with id: " + id);
         }
-        
+
         transactionDTO.setId(id);
         TransactionEntity entity = transactionMapper.toEntity(transactionDTO);
         TransactionEntity updatedEntity = transactionRepository.save(entity);
-        
+
         return transactionMapper.toDto(updatedEntity);
     }
 
@@ -268,7 +268,7 @@ public class TransactionServiceImpl implements TransactionService {
         if (!transactionRepository.existsById(id)) {
             throw new EntityNotFoundException("Transaction not found with id: " + id);
         }
-        
+
         transactionRepository.deleteById(id);
     }
 
@@ -288,12 +288,12 @@ public class TransactionServiceImpl implements TransactionService {
                 .map(transactionMapper::toDto)
                 .collect(Collectors.toList());
     }
-    
+
     private void validateTransaction(TransactionDTO transactionDTO) {
         if (transactionDTO.getSourceAccountId().equals(transactionDTO.getDestinationAccountId())) {
             throw new BusinessException("Source and destination accounts cannot be the same");
         }
-        
+
         // Adicione outras validações de negócio conforme necessário
     }
 }
@@ -342,7 +342,7 @@ package br.com.blackhunter.hunter_wallet.rest_api.newdomain;
 
 package br.com.blackhunter.hunter_wallet.rest_api.newdomain.exception;
 
-import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import exception.core.br.com.blackhunter.finey.rest.BusinessException;
 
 /**
  * <p>Classe <code>NewDomainException</code>.</p>
@@ -479,7 +479,7 @@ public ResponseEntity<ApiResponse<Map<String, String>>> handleMethodArgumentNotV
 
 package br.com.blackhunter.hunter_wallet.rest_api.transaction.service;
 
-import br.com.blackhunter.hunter_wallet.rest_api.core.exception.BusinessException;
+import exception.core.br.com.blackhunter.finey.rest.BusinessException;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.dto.TransactionDTO;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.entity.TransactionEntity;
 import br.com.blackhunter.hunter_wallet.rest_api.transaction.mapper.TransactionMapper;
@@ -493,8 +493,6 @@ import org.mockito.MockitoAnnotations;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;

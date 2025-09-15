@@ -1,0 +1,28 @@
+/*
+ * @(#)UserProfileData.java
+ *
+ * Copyright 2025, Black Hunter
+ * http://www.blackhunter.com.br
+ *
+ * Todos os direitos reservados.
+ */
+
+package br.com.blackhunter.finey.rest.useraccount.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class UserProfileData {
+    private UUID userId;
+    private UUID profileId;
+    private String fullName;
+    private String firstName;
+    private String lastName;
+    private Long age;
+}

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrações Financeiras | Hunter Wallet API</title>
+    <link rel="stylesheet" href="../../css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="light-theme">
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Hunter Wallet</h1>
+                <button id="theme-toggle" class="theme-toggle" aria-label="Alternar tema">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <ul>
+                    <li><a href="../../index.html"><i class="fas fa-home"></i> Início</a></li>
+                    <li><a href="../autenticacao.html"><i class="fas fa-key"></i> Autenticação</a></li>
+                    <li class="nav-section active">
+                        <a href="#" class="section-header">
+                            <i class="fas fa-puzzle-piece"></i> Integrações
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li class="active"><a href="integracoes-financeiras.html">Integrações Financeiras</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-section">
+                        <a href="#" class="section-header">
+                            <i class="fas fa-wallet"></i> Financeiro
+                            <i class="fas fa-chevron-down"></i>
+                        </a>
+                        <ul class="submenu">
+                            <li><a href="../financeiro/transacoes.html">Transações</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-container">
+                <section class="section">
+                    <h1>Integrações Financeiras</h1>
+                    <p class="lead">Conecte sua aplicação a plataformas financeiras externas para sincronizar transações e dados financeiros.</p>
+                </section>
+
+                <section class="section">
+                    <h2>Visão Geral</h2>
+                    <p>O módulo de Integrações Financeiras permite conectar o Hunter Wallet a diferentes plataformas financeiras para sincronização automática de transações, saldos e outros dados financeiros.</p>
+                    <p>Atualmente, a integração padrão é com a plataforma <b>Pluggy</b>.</p>
+                </section>
+
+                <section class="section">
+                    <h2>Endpoint</h2>
+                    <div class="endpoint-block">
+                        <span class="method post">POST</span>
+                        <code>/v1/integrations/financial-integrator/connect</code>
+                    </div>
+                    <p>Inicia o processo de conexão com uma plataforma financeira. Retorna um token de conexão criptografado e a data de expiração.</p>
+
+                    <h3>Resposta de Sucesso <span class="badge success">201 Created</span></h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Exemplo</span>
+                            <button class="copy-btn" aria-label="Copiar código"><i class="far fa-copy"></i></button>
+                        </div>
+                        <pre><code class="language-json">{
+  "message": "bank connection token created successfully.",
+  "dataAccess": "<connect_token_encrypted>",
+  "expiredAt": "2025-05-01T12:34:56.789"
+}</code></pre>
+                    </div>
+
+                    <h3>Campos do Retorno</h3>
+                    <ul>
+                        <li><b>message</b>: Mensagem de status da operação.</li>
+                        <li><b>dataAccess</b>: Token de conexão criptografado (utilizado para autenticação na plataforma financeira).</li>
+                        <li><b>expiredAt</b>: Data/hora de expiração do token (formato ISO 8601).</li>
+                    </ul>
+
+                    <h3>Possíveis Erros</h3>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>Exemplo de erro (400 Bad Request)</span>
+                            <button class="copy-btn" aria-label="Copiar código"><i class="far fa-copy"></i></button>
+                        </div>
+                        <pre><code class="language-json">{
+  "status": "error",
+  "statusCode": 400,
+  "data": "Error getting access token: <mensagem detalhada>",
+  "traceId": "<uuid>"
+}</code></pre>
+                    </div>
+                    <p>Outros erros seguem o mesmo padrão, podendo retornar status 404, 401, 500, etc, sempre com o campo <b>traceId</b> para rastreio.</p>
+                </section>
+
+                <section class="section">
+                    <h2>Fluxo de Integração</h2>
+                    <ol class="steps">
+                        <li>Seu aplicativo inicia a conexão enviando uma requisição para <code>/connect</code>.</li>
+                        <li>Recebe o <b>dataAccess</b> (token de conexão) e <b>expiredAt</b>.</li>
+                        <li>Utilize o token para autenticar o usuário na plataforma financeira.</li>
+                        <li>Após autenticação, a plataforma redireciona para sua aplicação.</li>
+                        <li>O Hunter Wallet sincroniza os dados periodicamente.</li>
+                    </ol>
+                </section>
+
+                <section class="section">
+                    <h2>Exemplo de Código</h2>
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>JavaScript (axios)</span>
+                            <button class="copy-btn" aria-label="Copiar código"><i class="far fa-copy"></i></button>
+                        </div>
+                        <pre><code class="language-javascript">const axios = require('axios');
+
+const api = axios.create({
+  baseURL: 'https://api.hunterwallet.com.br',
+  headers: {
+    'Authorization': 'Bearer SEU_TOKEN_AQUI',
+    'Content-Type': 'application/json'
+  }
+});
+
+async function conectarPlataformaFinanceira() {
+  try {
+    const response = await api.post('/v1/integrations/financial-integrator/connect');
+    console.log('Token de conexão:', response.data.dataAccess);
+    console.log('Expira em:', response.data.expiredAt);
+  } catch (error) {
+    console.error('Erro ao conectar:', error.response?.data || error.message);
+  }
+}
+
+conectarPlataformaFinanceira();</code></pre>
+                    </div>
+                </section>
+
+                <section class="section">
+                    <h2>Boas Práticas</h2>
+                    <ul>
+                        <li>Armazene com segurança o token de acesso recebido após a autenticação.</li>
+                        <li>Implemente tratamento de erros para lidar com falhas de conexão.</li>
+                        <li>Respeite os limites de taxa (rate limits) da API.</li>
+                        <li>Atualize periodicamente os tokens de acesso quando necessário.</li>
+                        <li>Implemente um mecanismo de fila para processar atualizações em segundo plano.</li>
+                    </ul>
+                </section>
+            </div>
+
+            <footer class="footer">
+                <div class="footer-content">
+                    <div class="footer-logo">
+                        <h3>Hunter Wallet</h3>
+                        <p>© 2025 Black Hunter - Todos os Direitos Reservados.</p>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Recursos</h4>
+                        <ul>
+                            <li><a href="../autenticacao.html">Documentação</a></li>
+                            <li><a href="#">Referência da API</a></li>
+                            <li><a href="#">Exemplos</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Suporte</h4>
+                        <ul>
+                            <li><a href="#">Central de Ajuda</a></li>
+                            <li><a href="#">Contato</a></li>
+                            <li><a href="#">Status</a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>Versão 1.0.0</p>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <script src="../../js/main.js"></script>
+</body>
+</html>
