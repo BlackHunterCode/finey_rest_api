@@ -57,7 +57,7 @@ public class TransactionEntity {
 
     @Column(name = "provider_transaction_code")
     private String providerTransactionCode;
-    @Column(name = "provider_transaction_id")
+    @Column(name = "provider_transaction_id", unique = true)
     private String providerTransactionId;
 
     @Column(name = "provider_transaction_type", nullable = false, updatable = false)

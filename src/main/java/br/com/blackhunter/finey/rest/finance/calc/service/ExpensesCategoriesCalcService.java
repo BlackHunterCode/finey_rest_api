@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
+import br.com.blackhunter.finey.rest.finance.transaction.dto.TransactionData;
+import br.com.blackhunter.finey.rest.finance.transaction.service.TransactionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +44,8 @@ public class ExpensesCategoriesCalcService {
     @Value("${hunter.secrets.pluggy.crypt-secret}")
     private String PLUGGY_CRYPT_SECRET;
 
+    @Autowired
+    private TransactionService transactionService;
     /**
      * Calcula e categoriza as despesas do usuário para o período especificado.
      * 
@@ -157,38 +162,25 @@ public class ExpensesCategoriesCalcService {
      *   </ul>
      * </ol>
      * 
-     * @param financialIntegratorManager gerenciador de integração financeira
      * @param bankAccountIds lista de IDs das contas bancárias (criptografados)
      * @param periodDate período de análise com data de início e fim
      * @return categorias de despesas criptografadas com valores, percentuais e variações
      * @throws Exception se houver erro na descriptografia, busca de transações ou criptografia dos resultados
      */
     public ExpensesCategories calculateExpensesCategoriesEncrypted(
-            FinancialIntegratorManager financialIntegratorManager, 
-            List<String> bankAccountIds, 
+            List<String> bankAccountIds,
             TransactionPeriodDate periodDate) throws Exception {
         
         // Mapa para armazenar valores por categoria
         Map<String, CategoryData> categoriesMap = new HashMap<>();
         AtomicReference<BigDecimal> totalExpenses = new AtomicReference<>(BigDecimal.ZERO);
         
-        FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-        
         // Processar transações de cada conta
         for (String accountId : bankAccountIds) {
-            String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-            String originalPluggyAccountId = financialIntegrator
-                .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-            
-            List<TransactionEntity> transactions = financialIntegrator
-                .getAllTransactionsPeriodByTargetId(
-                    originalPluggyAccountId,
-                    periodDate.getStartDate(),
-                    periodDate.getEndDate()
-                );
+            List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId(accountId, periodDate);
             
             // Processar apenas transações de débito
-            for (TransactionEntity transaction : transactions) {
+            for (TransactionData transaction : transactions) {
                 if (transaction.getType() == TransactionType.DEBIT) {
                     BigDecimal amount = transaction.getAmount().abs();
                     totalExpenses.set(totalExpenses.get().add(amount));
@@ -220,8 +212,7 @@ public class ExpensesCategoriesCalcService {
                     }
 
                     // Simular variação do período anterior (em implementação real, buscar dados históricos)
-                    double previousPercentage = calculatePreviousPercentage(categoryData.getName(), percentage, 
-                        financialIntegratorManager, bankAccountIds, periodDate);
+                    double previousPercentage = calculatePreviousPercentage(categoryData.getName(), percentage, bankAccountIds, periodDate);
 
                     try {
                         return new ExpenseCategory(
@@ -272,7 +263,7 @@ public class ExpensesCategoriesCalcService {
      * @param transaction transação a ser categorizada
      * @return nome da categoria identificada
      */
-    private String categorizeTransaction(TransactionEntity transaction) {
+    private String categorizeTransaction(TransactionData transaction) {
         String description = transaction.getDescription().toLowerCase();
         
         // Usar categoria já definida se disponível
@@ -371,14 +362,12 @@ public class ExpensesCategoriesCalcService {
      * 
      * @param categoryName nome da categoria
      * @param currentPercentage percentual atual da categoria (usado como fallback)
-     * @param financialIntegratorManager gerenciador de integração financeira
      * @param bankAccountIds lista de IDs das contas bancárias
      * @param periodDate período atual para calcular o período anterior
      * @return percentual real da categoria no período anterior
      */
     private double calculatePreviousPercentage(String categoryName, double currentPercentage,
-                                             FinancialIntegratorManager financialIntegratorManager,
-                                             List<String> bankAccountIds, 
+                                             List<String> bankAccountIds,
                                              TransactionPeriodDate periodDate) {
         try {
             // Calcular período anterior com mesma duração
@@ -393,19 +382,12 @@ public class ExpensesCategoriesCalcService {
             Map<String, BigDecimal> previousCategoriesMap = new HashMap<>();
             BigDecimal totalPreviousExpenses = BigDecimal.ZERO;
             
-            FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-            
             // Buscar transações do período anterior para cada conta
             for (String accountId : bankAccountIds) {
                 try {
-                    String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-                    String originalPluggyAccountId = financialIntegrator
-                        .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-                    
-                    List<TransactionEntity> transactions = financialIntegrator
-                        .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, previousStart, previousEnd);
-                    
-                    for (TransactionEntity transaction : transactions) {
+                    List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId(accountId, null, null, previousStart, previousEnd);
+
+                    for (TransactionData transaction : transactions) {
                          if (transaction.getType() == TransactionType.DEBIT) {
                              String category = categorizeTransaction(transaction);
                              BigDecimal amount = transaction.getAmount().abs();

@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import br.com.blackhunter.finey.rest.finance.transaction.dto.TransactionData;
+import br.com.blackhunter.finey.rest.finance.transaction.service.TransactionService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -41,6 +44,9 @@ import br.com.blackhunter.finey.rest.integrations.pluggy.dto.PluggyAccountIds;
 public class FinancialSummaryCalcService {
     @Value("${hunter.secrets.pluggy.crypt-secret}")
     private String PLUGGY_CRYPT_SECRET;
+
+    @Autowired
+    private TransactionService transactionService;
 
     /**
      * Calcula os dados de receita (entradas) para o período especificado.
@@ -90,19 +96,13 @@ public class FinancialSummaryCalcService {
         BigDecimal totalIncome = BigDecimal.ZERO;
         int totalTransactions = 0;
         
-        FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-        
         for (String accountId : bankAccountIds) {
-            String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-            String originalPluggyAccountId = financialIntegrator.getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-            
-            List<TransactionEntity> transactions = financialIntegrator.getAllTransactionsPeriodByTargetId(
-                    originalPluggyAccountId,
-                    periodDate.getStartDate(),
-                    periodDate.getEndDate()
+            List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId(
+                    accountId,
+                    periodDate
             );
             
-            for (TransactionEntity transaction : transactions) {
+            for (TransactionData transaction : transactions) {
                 if (transaction.getType() == TransactionType.CREDIT) {
                     totalIncome = totalIncome.add(transaction.getAmount());
                     totalTransactions++;
@@ -170,19 +170,10 @@ public class FinancialSummaryCalcService {
         BigDecimal totalExpenses = BigDecimal.ZERO;
         int totalTransactions = 0;
         
-        FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-        
         for (String accountId : bankAccountIds) {
-            String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-            String originalPluggyAccountId = financialIntegrator.getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-            
-            List<TransactionEntity> transactions = financialIntegrator.getAllTransactionsPeriodByTargetId(
-                    originalPluggyAccountId,
-                    periodDate.getStartDate(),
-                    periodDate.getEndDate()
-            );
-            
-            for (TransactionEntity transaction : transactions) {
+            List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, periodDate );
+
+            for (TransactionData transaction : transactions) {
                 if (transaction.getType() == TransactionType.DEBIT) {
                     totalExpenses = totalExpenses.add(transaction.getAmount().abs());
                     totalTransactions++;
@@ -261,19 +252,10 @@ public class FinancialSummaryCalcService {
         
         // Processar transações de cada conta para identificar investimentos
         for (String accountId : bankAccountIds) {
-            String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-            String originalPluggyAccountId = financialIntegrator
-                .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-            
-            List<TransactionEntity> transactions = financialIntegrator
-                .getAllTransactionsPeriodByTargetId(
-                    originalPluggyAccountId,
-                    periodDate.getStartDate(),
-                    periodDate.getEndDate()
-                );
-            
+            List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, periodDate );
+
             // Analisar transações para identificar investimentos
-            for (TransactionEntity transaction : transactions) {
+            for (TransactionData transaction : transactions) {
                 if (isInvestmentTransaction(transaction)) {
                     String investmentType = categorizeInvestment(transaction);
                     BigDecimal amount = transaction.getAmount().abs();
@@ -599,16 +581,11 @@ public class FinancialSummaryCalcService {
             // Buscar receitas do período anterior
             BigDecimal previousIncome = BigDecimal.ZERO;
             FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-            
+
             for (String accountId : bankAccountIds) {
-                String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-                String originalPluggyAccountId = financialIntegrator
-                    .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
+                List<TransactionData> previousTransactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, null, null, previousStart, previousEnd);
                 
-                List<TransactionEntity> previousTransactions = financialIntegrator
-                    .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, previousStart, previousEnd);
-                
-                for (TransactionEntity transaction : previousTransactions) {
+                for (TransactionData transaction : previousTransactions) {
                     if (transaction.getType() == TransactionType.CREDIT) {
                         previousIncome = previousIncome.add(transaction.getAmount());
                     }
@@ -685,12 +662,9 @@ public class FinancialSummaryCalcService {
             // Buscar transações do período atual
             BigDecimal currentPeriodExpenses = BigDecimal.ZERO;
             for (String accountId : bankAccountIds) {
-                String decryptedAccountId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-                FinancialIntegrator integrator = financialIntegratorManager.getFinancialIntegrator();
-                List<TransactionEntity> currentTransactions = integrator.getAllTransactionsPeriodByTargetId(
-                    decryptedAccountId, startOfCurrentPeriod, endOfCurrentPeriod);
-                
-                for (TransactionEntity transaction : currentTransactions) {
+                List<TransactionData> currentTransactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, periodDate );
+
+                for (TransactionData transaction : currentTransactions) {
                     if (TransactionType.valueOf("DEBIT").equals(transaction.getType())) {
                         currentPeriodExpenses = currentPeriodExpenses.add(transaction.getAmount().abs());
                     }
@@ -700,12 +674,9 @@ public class FinancialSummaryCalcService {
             // Buscar transações do período anterior
             BigDecimal previousPeriodExpenses = BigDecimal.ZERO;
             for (String accountId : bankAccountIds) {
-                String decryptedAccountId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-                FinancialIntegrator integrator = financialIntegratorManager.getFinancialIntegrator();
-                List<TransactionEntity> previousTransactions = integrator.getAllTransactionsPeriodByTargetId(
-                    decryptedAccountId, startOfPreviousPeriod, endOfPreviousPeriod);
-                
-                for (TransactionEntity transaction : previousTransactions) {
+                List<TransactionData> previousTransactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, null, null, startOfPreviousPeriod, endOfPreviousPeriod );
+
+                for (TransactionData transaction : previousTransactions) {
                     if ("DEBIT".equals(transaction.getType())) {
                         previousPeriodExpenses = previousPeriodExpenses.add(transaction.getAmount().abs());
                     }
@@ -785,19 +756,12 @@ public class FinancialSummaryCalcService {
             BigDecimal totalInvested = BigDecimal.ZERO;
             BigDecimal totalReturns = BigDecimal.ZERO;
             
-            FinancialIntegrator financialIntegrator = financialIntegratorManager.getFinancialIntegrator();
-            
             // Buscar transações de investimento para cada conta
             for (String accountId : bankAccountIds) {
                 try {
-                    String accountEntityId = CryptUtil.decrypt(accountId, PLUGGY_CRYPT_SECRET);
-                    String originalPluggyAccountId = financialIntegrator
-                        .getOriginalFinancialAccountIdByTargetId(UUID.fromString(accountEntityId));
-                    
-                    List<TransactionEntity> transactions = financialIntegrator
-                        .getAllTransactionsPeriodByTargetId(originalPluggyAccountId, startDate, endDate);
-                    
-                    for (TransactionEntity transaction : transactions) {
+                    List<TransactionData> transactions = transactionService.getAllTransactionsPeriodByAccountId( accountId, null, null, startDate, endDate );
+
+                    for (TransactionData transaction : transactions) {
                         if (isInvestmentTransaction(transaction)) {
                             if (transaction.getType() == TransactionType.DEBIT) {
                                 // Débitos são investimentos realizados
@@ -841,7 +805,7 @@ public class FinancialSummaryCalcService {
      * @param transaction transação a ser analisada
      * @return true se for transação de investimento
      */
-    private boolean isInvestmentTransaction(TransactionEntity transaction) {
+    private boolean isInvestmentTransaction(TransactionData transaction) {
         String description = transaction.getDescription().toLowerCase();
         
         return containsKeywords(description, 
@@ -860,7 +824,7 @@ public class FinancialSummaryCalcService {
      * @param transaction transação a ser categorizada
      * @return tipo de investimento identificado
      */
-    private String categorizeInvestment(TransactionEntity transaction) {
+    private String categorizeInvestment(TransactionData transaction) {
         String description = transaction.getDescription().toLowerCase();
         
         if (containsKeywords(description, "cdb", "lci", "lca", "tesouro", "selic", "ipca")) {
