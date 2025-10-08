@@ -1,11 +1,10 @@
-package br.com.blackhunter.finey.rest.finance.calc.service;
+package br.com.blackhunter.finey.rest.finance.analysis.calc;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import br.com.blackhunter.finey.rest.finance.transaction.dto.TransactionData;
 import br.com.blackhunter.finey.rest.finance.transaction.service.TransactionService;
@@ -18,10 +17,7 @@ import br.com.blackhunter.finey.rest.core.dto.TransactionPeriodDate;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.investments.Investment;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.investments.InvestmentReturn;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.investments.SavingsInvestments;
-import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionType;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegrator;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegratorManager;
 
 /**
  * Serviço responsável por calcular e analisar investimentos e economias.

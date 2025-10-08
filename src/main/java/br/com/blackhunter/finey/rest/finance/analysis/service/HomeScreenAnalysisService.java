@@ -3,6 +3,7 @@ package br.com.blackhunter.finey.rest.finance.analysis.service;
 import br.com.blackhunter.finey.rest.auth.util.CryptUtil;
 import br.com.blackhunter.finey.rest.auth.util.JwtUtil;
 import br.com.blackhunter.finey.rest.core.dto.TransactionPeriodDate;
+import br.com.blackhunter.finey.rest.finance.analysis.calc.*;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.budget.BudgetCategory;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.budget.BudgetReality;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.current_balance_projection.CurrentBalanceProjection;
@@ -16,8 +17,6 @@ import br.com.blackhunter.finey.rest.finance.analysis.dto.income.IncomeBreakdown
 import br.com.blackhunter.finey.rest.finance.analysis.dto.income.IncomeSource;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.insights.Insights;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.investments.SavingsInvestments;
-import br.com.blackhunter.finey.rest.finance.calc.service.FinancialSummaryCalcService;
-import br.com.blackhunter.finey.rest.finance.calc.service.ExpensesCategoriesCalcService;
 import br.com.blackhunter.finey.rest.finance.transaction.service.TransactionService;
 import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegrator;
 import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegratorManager;
@@ -25,10 +24,6 @@ import br.com.blackhunter.finey.rest.integrations.financial_integrator.dto.Finan
 import br.com.blackhunter.finey.rest.integrations.pluggy.dto.PluggyAccountIds;
 import br.com.blackhunter.finey.rest.useraccount.entity.UserAccountEntity;
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionType;
-
-import br.com.blackhunter.finey.rest.finance.calc.service.BalanceProjectionCalcService;
-import br.com.blackhunter.finey.rest.finance.calc.service.IncomeBreakdownCalcService;
-import br.com.blackhunter.finey.rest.finance.calc.service.SavingsInvestmentsCalcService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,7 +37,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class AnalysisService {
+public class HomeScreenAnalysisService {
     @Value("${hunter.secrets.pluggy.crypt-secret}")
     private String PLUGGY_CRYPT_SECRET;
 
@@ -56,7 +51,7 @@ public class AnalysisService {
     private final TransactionService transactionService;
 
     // Adicionar no construtor
-    public AnalysisService(
+    public HomeScreenAnalysisService(
             JwtUtil jwtUtil,
             FinancialIntegratorManager financialIntegratorManager,
             FinancialSummaryCalcService financialSummaryCalcService,

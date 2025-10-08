@@ -36,7 +36,7 @@ import lombok.ToString;
  * <p>Essa é a entidade base do sistema.</p>
  * */
 @Entity
-@Table(name = "hw_useraccounts")
+@Table(name = "fn_useraccounts")
 @Data
 public class UserAccountEntity {
     @Id

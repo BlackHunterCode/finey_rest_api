@@ -1,11 +1,10 @@
-package br.com.blackhunter.finey.rest.finance.calc.service;
+package br.com.blackhunter.finey.rest.finance.analysis.calc;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.UUID;
 
 import br.com.blackhunter.finey.rest.finance.transaction.dto.TransactionData;
 import br.com.blackhunter.finey.rest.finance.transaction.service.TransactionService;
@@ -15,10 +14,7 @@ import org.springframework.stereotype.Service;
 
 import br.com.blackhunter.finey.rest.auth.util.CryptUtil;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.current_balance_projection.CurrentBalanceProjection;
-import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionType;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegrator;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegratorManager;
 import br.com.blackhunter.finey.rest.integrations.financial_integrator.dto.FinancialInstitutionData;
 import br.com.blackhunter.finey.rest.integrations.pluggy.dto.PluggyAccountIds;
 

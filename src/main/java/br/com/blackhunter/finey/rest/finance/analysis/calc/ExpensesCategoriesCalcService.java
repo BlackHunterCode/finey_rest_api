@@ -1,4 +1,4 @@
-package br.com.blackhunter.finey.rest.finance.calc.service;
+package br.com.blackhunter.finey.rest.finance.analysis.calc;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -7,7 +7,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 
 import br.com.blackhunter.finey.rest.finance.transaction.dto.TransactionData;
@@ -20,10 +19,7 @@ import br.com.blackhunter.finey.rest.auth.util.CryptUtil;
 import br.com.blackhunter.finey.rest.core.dto.TransactionPeriodDate;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.expanses_categories.ExpenseCategory;
 import br.com.blackhunter.finey.rest.finance.analysis.dto.expanses_categories.ExpensesCategories;
-import br.com.blackhunter.finey.rest.finance.transaction.entity.TransactionEntity;
 import br.com.blackhunter.finey.rest.finance.transaction.enums.TransactionType;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegrator;
-import br.com.blackhunter.finey.rest.integrations.financial_integrator.FinancialIntegratorManager;
 
 /**
  * Serviço responsável por calcular e categorizar despesas financeiras.
